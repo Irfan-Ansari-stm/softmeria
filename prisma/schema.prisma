@@ -1,0 +1,420 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+  INTERNAL
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ARCHIVED
+  COMPLETED
+}
+
+enum DocumentStatus {
+  NOT_STARTED
+  DRAFT
+  IN_PROGRESS
+  IN_REVIEW
+  APPROVED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  DELETED
+  RESTORED
+  ARCHIVED
+  COMMENTED
+  REVIEW_REQUESTED
+  REVIEW_APPROVED
+  EXPORTED
+  IMPORTED
+}
+
+model User {
+  id                   String            @id @default(uuid())
+  email                String            @unique
+  passwordHash         String
+  name                 String
+  avatarUrl            String?
+  isEmailVerified      Boolean           @default(false)
+  emailVerifyToken     String?
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  projectMemberships   ProjectMember[]
+  createdProjects      Project[]         @relation("ProjectCreator")
+  createdDocuments     Document[]        @relation("DocCreator")
+  updatedDocuments     Document[]        @relation("DocModifier")
+  documentVersions     DocumentVersion[] @relation("VersionAuthor")
+  sessions             Session[]
+  comments             Comment[]
+  reviewRequests       ReviewRequest[]   @relation("ReviewRequester")
+  reviewApprovals      ReviewApproval[]  @relation("Reviewer")
+  activityLogs         ActivityLog[]
+  notifications        Notification[]
+  createdTemplates     Template[]
+
+  @@index([email])
+}
+
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner        User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members      WorkspaceMember[]
+  projects     Project[]
+  templates    Template[]
+  tags         Tag[]
+  activityLogs ActivityLog[]
+  settings     WorkspaceSetting?
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        UserRole  @default(EDITOR)
+  joinedAt    DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model Project {
+  id            String            @id @default(uuid())
+  workspaceId   String
+  name          String
+  slug          String
+  description   String?
+  projectType   String            @default("Web application")
+  category      String            @default("Engineering")
+  techStack     String            @default("[]")
+  repositoryUrl String?
+  icon          String?           @default("folder")
+  color         String?           @default("#4f46e5")
+  visibility    ProjectVisibility @default(PRIVATE)
+  status        ProjectStatus     @default(ACTIVE)
+  createdById   String
+  isArchived    Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy    User            @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  categories   Category[]
+  documents    Document[]
+  members      ProjectMember[]
+  activityLogs ActivityLog[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([status])
+  @@index([isArchived])
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      UserRole @default(EDITOR)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  projectId   String
+  parentId    String?
+  name        String
+  slug        String
+  description String?
+  sortOrder   Int      @default(0)
+  isCustom    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent    Category?  @relation("NestedCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[] @relation("NestedCategories")
+  documents Document[]
+
+  @@index([projectId])
+  @@index([parentId])
+  @@index([projectId, sortOrder])
+}
+
+model Document {
+  id            String         @id @default(uuid())
+  projectId     String
+  categoryId    String
+  title         String
+  fileName      String
+  slug          String
+  description   String?
+  content       String         @default("")
+  status        DocumentStatus @default(NOT_STARTED)
+  isOptional    Boolean        @default(false)
+  sortOrder     Int            @default(0)
+  versionNumber Int            @default(1)
+  createdById   String
+  updatedById   String?
+  isArchived    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category       Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy      User             @relation("DocCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?            @relation("DocModifier", fields: [updatedById], references: [id], onDelete: SetNull)
+  versions       DocumentVersion[]
+  comments       Comment[]
+  reviewRequests ReviewRequest[]
+  documentTags   DocumentTag[]
+  activityLogs   ActivityLog[]
+
+  @@index([projectId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([isArchived])
+  @@index([projectId, sortOrder])
+}
+
+model DocumentVersion {
+  id            String   @id @default(uuid())
+  documentId    String
+  versionNumber Int
+  title         String
+  content       String
+  changeSummary String?
+  authorId      String
+  createdAt     DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author   User     @relation("VersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId])
+}
+
+model Template {
+  id                  String   @id @default(uuid())
+  workspaceId         String?
+  createdById         String?
+  title               String
+  slug                String
+  description         String
+  category            String
+  purpose             String
+  recommendedSections String   @default("[]")
+  content             String
+  isBuiltin           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([category])
+  @@index([isBuiltin])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  documentId String
+  userId     String
+  parentId   String?
+  content    String
+  isResolved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  document Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("ThreadedComments", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("ThreadedComments")
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model ReviewRequest {
+  id          String       @id @default(uuid())
+  documentId  String
+  requesterId String
+  status      ReviewStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  document  Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requester User             @relation("ReviewRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  approvals ReviewApproval[]
+
+  @@index([documentId])
+  @@index([requesterId])
+  @@index([status])
+}
+
+model ReviewApproval {
+  id              String       @id @default(uuid())
+  reviewRequestId String
+  reviewerId      String
+  status          ReviewStatus @default(APPROVED)
+  comment         String?
+  createdAt       DateTime     @default(now())
+
+  reviewRequest ReviewRequest @relation(fields: [reviewRequestId], references: [id], onDelete: Cascade)
+  reviewer      User          @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewRequestId, reviewerId])
+  @@index([reviewRequestId])
+  @@index([reviewerId])
+}
+
+model Tag {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  color       String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documentTags DocumentTag[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model DocumentTag {
+  id         String @id @default(uuid())
+  documentId String
+  tagId      String
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, tagId])
+  @@index([documentId])
+  @@index([tagId])
+}
+
+model ActivityLog {
+  id          String         @id @default(uuid())
+  workspaceId String
+  projectId   String?
+  documentId  String?
+  userId      String
+  action      ActivityAction
+  entityType  String
+  metadata    String?
+  createdAt   DateTime       @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document  Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model WorkspaceSetting {
+  id               String   @id @default(uuid())
+  workspaceId      String   @unique
+  defaultStructure String?
+  themePreference  String   @default("system")
+  notifyOnComment  Boolean  @default(true)
+  notifyOnReview   Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  type      String   @default("info")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+

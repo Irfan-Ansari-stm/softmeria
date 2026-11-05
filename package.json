@@ -1,0 +1,28 @@
+{
+  "name": "devblueprint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DevBlueprint - Full-Stack Developer Documentation Management Platform",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @devblueprint/* run dev",
+    "dev:api": "pnpm --filter @devblueprint/api run dev",
+    "dev:web": "pnpm --filter @devblueprint/web run dev",
+    "build": "pnpm --filter @devblueprint/types run build && pnpm --filter @devblueprint/shared run build && pnpm --filter @devblueprint/api run build && pnpm --filter @devblueprint/web run build",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "test": "pnpm --filter @devblueprint/api test && pnpm --filter @devblueprint/web test",
+    "lint": "pnpm --filter @devblueprint/* lint"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "prisma": "^6.3.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.3.0"
+  }
+}
