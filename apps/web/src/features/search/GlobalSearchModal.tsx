@@ -72,21 +72,21 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
       <div className="space-y-4">
         {/* Search Input */}
         <div className="relative flex items-center">
-          <Search className="absolute left-3 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 h-4 w-4 text-foreground-muted" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search all documents, markdown code, blueprint categories, or projects..."
-            className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
             autoFocus
           />
           {isLoading ? (
-            <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-zinc-500" />
+            <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-foreground-muted" />
           ) : query ? (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-3 p-0.5 text-zinc-500 hover:text-zinc-300"
+              className="absolute right-3 p-0.5 text-foreground-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -98,32 +98,32 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
           {/* Projects Results */}
           {results.projects.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 px-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-foreground-muted px-2">
                 Projects
               </div>
               {results.projects.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => handleSelectProject(p.id)}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-zinc-800/80 transition-colors text-left group border border-transparent hover:border-zinc-800"
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-background-secondary transition-colors text-left group border border-transparent hover:border-border shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className="h-8 w-8 rounded-md flex items-center justify-center text-white shrink-0"
-                      style={{ backgroundColor: p.color || '#4f46e5' }}
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm"
+                      style={{ backgroundColor: p.color || '#2563EB' }}
                     >
                       <FolderKanban className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-zinc-100 group-hover:text-indigo-400 transition-colors">
+                      <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
                         {p.name}
                       </p>
-                      <p className="text-[11px] text-zinc-400 truncate">
+                      <p className="text-[11px] text-foreground-secondary truncate">
                         {p.description || p.projectType}
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                  <ArrowRight className="h-4 w-4 text-foreground-muted group-hover:text-foreground transition-colors" />
                 </button>
               ))}
             </div>
@@ -132,22 +132,22 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
           {/* Documents Results */}
           {results.documents.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 px-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-foreground-muted px-2">
                 Documents & Blueprints
               </div>
               {results.documents.map((d) => (
                 <button
                   key={d.id}
                   onClick={() => handleSelectDoc(d.project.id, d.id)}
-                  className="w-full p-2.5 rounded-lg hover:bg-zinc-800/80 transition-colors text-left group border border-zinc-800/40 hover:border-zinc-700/80 space-y-1.5"
+                  className="w-full p-2.5 rounded-lg hover:bg-background-secondary transition-colors text-left group border border-border/60 hover:border-border space-y-1.5 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 truncate">
-                      <FileText className="h-4 w-4 text-indigo-400 shrink-0" />
-                      <span className="text-xs font-medium text-zinc-100 group-hover:text-indigo-300 transition-colors truncate">
+                      <FileText className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">
                         {d.title}
                       </span>
-                      <span className="text-[10px] text-zinc-500 font-mono">
+                      <span className="text-[10px] text-foreground-muted font-mono">
                         ({d.fileName})
                       </span>
                     </div>
@@ -155,11 +155,11 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                       <Badge variant="outline" className="text-[10px] py-0 px-1.5">
                         {d.project.name}
                       </Badge>
-                      <span className="text-[10px] text-zinc-500">v{d.versionNumber}</span>
+                      <span className="text-[10px] text-foreground-muted">v{d.versionNumber}</span>
                     </div>
                   </div>
                   {d.snippet && (
-                    <p className="text-[11px] text-zinc-400 font-mono line-clamp-2 pl-6 bg-zinc-950/40 p-1 rounded">
+                    <p className="text-[11px] text-foreground-secondary font-mono line-clamp-2 pl-6 bg-background-secondary/80 p-1.5 rounded-md border border-border">
                       {d.snippet}
                     </p>
                   )}
@@ -173,13 +173,13 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
             !isLoading &&
             results.projects.length === 0 &&
             results.documents.length === 0 && (
-              <div className="py-8 text-center text-xs text-zinc-500">
+              <div className="py-8 text-center text-xs text-foreground-muted">
                 No documents or projects matching &ldquo;{query}&rdquo;
               </div>
             )}
 
           {!query.trim() && (
-            <div className="py-8 text-center text-xs text-zinc-500">
+            <div className="py-8 text-center text-xs text-foreground-muted">
               Type keywords to search across titles, files, markdown text, and tags.
             </div>
           )}
@@ -188,4 +188,3 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
     </Dialog>
   );
 }
-

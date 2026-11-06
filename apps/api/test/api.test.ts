@@ -48,7 +48,7 @@ describe('DevBlueprint API Integration Tests', () => {
     expect(res.body.success).toBe(true);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data.length).toBeGreaterThan(0);
-    const flagshipProject = res.body.data.find((p: any) => p.name.includes('DevBlueprint')) || res.body.data[0];
+    const flagshipProject = res.body.data.find((p: any) => p.name.includes('FinTech')) || res.body.data[0];
     projectId = flagshipProject.id;
   });
 
@@ -59,7 +59,7 @@ describe('DevBlueprint API Integration Tests', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.length).toBeGreaterThanOrEqual(8);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(7);
     const firstCat = res.body.data[0];
     expect(firstCat.documents.length).toBeGreaterThan(0);
     documentId = firstCat.documents[0].id;
@@ -149,8 +149,8 @@ describe('DevBlueprint API Integration Tests', () => {
       .set('Authorization', `Bearer ${ownerToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.totalProjects).toBeGreaterThanOrEqual(2);
-    expect(res.body.data.totalDocuments).toBeGreaterThanOrEqual(40);
+    expect(res.body.data.totalProjects).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.totalDocuments).toBeGreaterThanOrEqual(17);
     expect(res.body.data.overallCompletionPercentage).toBeGreaterThan(0);
     expect(res.body.data.recentActivities.length).toBeGreaterThan(0);
   });

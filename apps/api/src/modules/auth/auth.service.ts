@@ -73,7 +73,11 @@ export class AuthService {
       include: {
         workspaceMemberships: {
           include: {
-            workspace: true
+            workspace: {
+              include: {
+                settings: true
+              }
+            }
           }
         }
       }
@@ -101,7 +105,8 @@ export class AuthService {
         id: m.workspace.id,
         name: m.workspace.name,
         slug: m.workspace.slug,
-        role: m.role
+        role: m.role,
+        settings: (m.workspace as any).settings
       })),
       tokens
     };
@@ -166,7 +171,8 @@ export class AuthService {
                 id: true,
                 name: true,
                 slug: true,
-                logoUrl: true
+                logoUrl: true,
+                settings: true
               }
             }
           }

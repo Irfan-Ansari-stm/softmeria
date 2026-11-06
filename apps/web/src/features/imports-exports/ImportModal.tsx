@@ -10,7 +10,7 @@ import { api } from '../../lib/api';
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  projects: any[];
+  projects?: any[];
   defaultProjectId?: string;
   defaultCategoryId?: string;
 }
@@ -18,7 +18,7 @@ interface ImportModalProps {
 export function ImportModal({
   isOpen,
   onClose,
-  projects,
+  projects = [],
   defaultProjectId,
   defaultCategoryId
 }: ImportModalProps) {
@@ -107,7 +107,7 @@ export function ImportModal({
     >
       <form onSubmit={handleImport} className="space-y-4">
         {/* Mode Selector */}
-        <div className="flex rounded-lg border border-zinc-800 bg-zinc-950 p-1">
+        <div className="flex rounded-lg border border-border bg-background p-1 shadow-xs">
           <button
             type="button"
             onClick={() => {
@@ -116,8 +116,8 @@ export function ImportModal({
             }}
             className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 ${
               mode === 'zip'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-secondary text-foreground font-semibold shadow-xs'
+                : 'text-foreground-muted hover:text-foreground'
             }`}
           >
             <Archive className="h-3.5 w-3.5" />
@@ -131,8 +131,8 @@ export function ImportModal({
             }}
             className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 ${
               mode === 'files'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-secondary text-foreground font-semibold shadow-xs'
+                : 'text-foreground-muted hover:text-foreground'
             }`}
           >
             <FileText className="h-3.5 w-3.5" />
@@ -142,13 +142,13 @@ export function ImportModal({
 
         {/* Project Selector */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-300">
+          <label className="text-xs font-medium text-foreground-secondary">
             Target Project Workspace
           </label>
           <select
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="w-full h-9 px-3 rounded-md border border-zinc-800 bg-zinc-950 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -160,9 +160,9 @@ export function ImportModal({
 
         {/* File Dropzone */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-300">Select File(s)</label>
-          <div className="p-6 border-2 border-dashed border-zinc-800 rounded-lg text-center hover:border-zinc-700 transition-colors bg-zinc-950/40">
-            <Upload className="h-8 w-8 text-zinc-500 mx-auto mb-2" />
+          <label className="text-xs font-medium text-foreground-secondary">Select File(s)</label>
+          <div className="p-6 border-2 border-dashed border-border rounded-xl text-center hover:border-primary/50 transition-colors bg-background-secondary/50">
+            <Upload className="h-8 w-8 text-foreground-muted mx-auto mb-2" />
             <input
               type="file"
               id="import-file-input"
@@ -173,27 +173,25 @@ export function ImportModal({
             />
             <label
               htmlFor="import-file-input"
-              className="cursor-pointer text-xs text-indigo-400 hover:text-indigo-300 font-medium block"
+              className="cursor-pointer text-xs text-primary hover:underline font-medium block"
             >
               Click to select {mode === 'zip' ? 'a .zip archive' : 'one or more .md files'}
             </label>
-            <p className="text-[11px] text-zinc-500 mt-1">
+            <p className="text-[11px] text-foreground-muted mt-1">
               {selectedFiles && selectedFiles.length > 0
-                ? `${selectedFiles.length} file(s) selected: ${selectedFiles[0].name}`
-                : mode === 'zip'
-                ? 'ZIP folder structure will be mapped to documentation categories'
-                : 'Supported: .md, .markdown, .mdx'}
+                ? `${selectedFiles.length} file(s) chosen (${selectedFiles[0].name})`
+                : 'Drag and drop or browse from filesystem'}
             </p>
           </div>
         </div>
 
-        {/* Result Message */}
+        {/* Status Message */}
         {message && (
           <div
             className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
               message.type === 'success'
-                ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-300'
-                : 'bg-rose-950/60 border border-rose-800 text-rose-300'
+                ? 'bg-success/15 border border-success/30 text-success font-medium'
+                : 'bg-destructive/15 border border-destructive/30 text-destructive font-medium'
             }`}
           >
             {message.type === 'success' ? (
@@ -205,10 +203,9 @@ export function ImportModal({
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-zinc-800">
+        <div className="flex justify-end gap-2 pt-2 border-t border-border">
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Close
+            Cancel
           </Button>
           <Button
             type="submit"
@@ -224,4 +221,3 @@ export function ImportModal({
     </Dialog>
   );
 }
-

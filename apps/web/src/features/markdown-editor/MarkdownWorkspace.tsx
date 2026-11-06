@@ -8,14 +8,17 @@ import {
   AlertTriangle,
   PanelRightClose,
   PanelRightOpen,
-  Maximize2,
-  Minimize2,
-  FileText
+  FileText,
+  Code2,
+  Eye,
+  Info
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/useEditorStore';
+import { useLayoutStore } from '../../stores/useLayoutStore';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { MarkdownPreview } from './MarkdownPreview';
 import { ContextualRightPanel } from './ContextualRightPanel';
+import { ResizeHandle } from '../../components/ui/ResizeHandle';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 
@@ -33,23 +36,44 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
     isOptional,
     saveStatus,
     errorMessage,
-    viewMode,
     isFullScreen,
-    isRightPanelOpen,
     setDocument,
     setTitle,
     setContent,
     setSaveStatus,
     setSavedSuccessfully,
-    setViewMode,
-    toggleFullScreen,
-    toggleRightPanel
+    toggleFullScreen
   } = useEditorStore();
 
+  const {
+    editorSplitRatio,
+    setEditorSplitRatio,
+    resetEditorSplitRatio,
+    viewMode,
+    setViewMode,
+    mobileTab,
+    setMobileTab,
+    inspectorWidth,
+    isInspectorCollapsed,
+    toggleInspectorCollapsed,
+    setInspectorCollapsed,
+    isMobileInspectorOpen,
+    setMobileInspectorOpen
+  } = useLayoutStore();
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Synchronize line gutter vertical scroll with textarea
+  const handleEditorScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (gutterRef.current) {
+      gutterRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
 
   // Load document data
   useEffect(() => {
@@ -90,13 +114,12 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
           isOptional: currentOptional,
           expectedVersion: expectedVer
         });
-
         if (res.success && res.data) {
           setSavedSuccessfully(res.data.versionNumber);
         }
       } catch (err: any) {
-        if (err.message?.includes('modified by another session') || err.message?.includes('409')) {
-          setSaveStatus('conflict', err.message);
+        if (err.statusCode === 409) {
+          setSaveStatus('conflict', 'Conflict detected: document was modified by another session');
         } else {
           setSaveStatus('error', err.message || 'Auto-save failed');
         }
@@ -105,7 +128,7 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
     [documentId, setSaveStatus, setSavedSuccessfully]
   );
 
-  // Trigger debounced save on content / title / status changes
+  // Debounced auto-save listener on content change
   useEffect(() => {
     if (saveStatus !== 'dirty') return;
 
@@ -206,69 +229,78 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
   const chars = content.length;
   const lines = content.split('\n').length;
 
+  // Split resize handler
+  const handleSplitResize = (deltaX: number) => {
+    if (!splitContainerRef.current) return;
+    const totalWidth = splitContainerRef.current.offsetWidth;
+    if (totalWidth <= 0) return;
+    const deltaPercent = (deltaX / totalWidth) * 100;
+    setEditorSplitRatio(editorSplitRatio + deltaPercent);
+  };
+
   return (
     <div
-      className={`flex flex-col h-full bg-zinc-950 text-zinc-100 ${
+      className={`w-full h-full flex flex-col bg-background text-foreground transition-colors overflow-hidden ${
         isFullScreen ? 'fixed inset-0 z-50' : 'relative'
       }`}
     >
-      {/* Document Top Bar */}
-      <div className="h-12 border-b border-zinc-800 bg-zinc-950 px-4 flex items-center justify-between gap-4 shrink-0">
+      {/* 1. DOCUMENT HEADER */}
+      <header className="h-12 border-b border-border bg-background px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-10">
         {/* Document Title input */}
-        <div className="flex items-center gap-2 flex-1 max-w-xl">
-          <FileText className="h-4 w-4 text-indigo-400 shrink-0" />
+        <div className="flex items-center gap-2 flex-1 min-w-0 max-w-xl">
+          <FileText className="h-4 w-4 text-primary shrink-0" />
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Document Title"
-            className="w-full bg-transparent font-semibold text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-0 truncate"
+            className="w-full bg-transparent font-semibold text-xs sm:text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-0 truncate"
           />
         </div>
 
         {/* Save Status & Metrics */}
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0">
           {/* Status Indicator */}
           <div className="flex items-center gap-1.5 font-medium">
             {saveStatus === 'saving' && (
-              <span className="flex items-center gap-1.5 text-zinc-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-                <span>Saving...</span>
+              <span className="flex items-center gap-1.5 text-foreground-muted">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="hidden sm:inline">Saving...</span>
               </span>
             )}
             {saveStatus === 'saved' && (
-              <span className="flex items-center gap-1 text-emerald-400">
+              <span className="flex items-center gap-1 text-success font-medium">
                 <CheckCircle className="h-3.5 w-3.5" />
-                <span>Saved</span>
+                <span className="hidden sm:inline">Saved</span>
               </span>
             )}
             {saveStatus === 'dirty' && (
-              <span className="flex items-center gap-1 text-amber-400">
-                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                <span>Unsaved</span>
+              <span className="flex items-center gap-1 text-warning font-medium">
+                <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
+                <span className="hidden sm:inline">Unsaved</span>
               </span>
             )}
             {saveStatus === 'error' && (
               <span
-                className="flex items-center gap-1 text-rose-400"
+                className="flex items-center gap-1 text-destructive font-medium"
                 title={errorMessage || 'Save error'}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Save Failed</span>
+                <span className="hidden sm:inline">Save Failed</span>
               </span>
             )}
             {saveStatus === 'conflict' && (
               <span
-                className="flex items-center gap-1 text-rose-400 font-semibold"
+                className="flex items-center gap-1 text-destructive font-semibold"
                 title={errorMessage || 'Version conflict'}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Conflict!</span>
+                <span className="hidden sm:inline">Conflict!</span>
               </span>
             )}
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-zinc-500 font-mono text-[11px] border-l border-zinc-800 pl-3">
+          <div className="hidden lg:flex items-center gap-2 text-foreground-muted font-mono text-[11px] border-l border-border pl-3">
             <span>{lines} L</span>
             <span>•</span>
             <span>{words} W</span>
@@ -282,28 +314,37 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
             variant={saveStatus === 'dirty' ? 'primary' : 'outline'}
             onClick={handleManualSave}
             disabled={saveStatus === 'saving'}
-            className="text-xs gap-1.5 h-7 px-2.5"
+            className="text-xs gap-1.5 h-7 px-2.5 shadow-xs"
           >
             <Save className="h-3 w-3" />
             <span className="hidden sm:inline">Save</span>
           </Button>
 
-          {/* Toggle Right Panel */}
+          {/* Mobile Inspector Trigger (<768px) */}
           <button
-            onClick={toggleRightPanel}
-            title={isRightPanelOpen ? 'Collapse panel' : 'Expand panel'}
-            className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+            onClick={() => setMobileInspectorOpen(true)}
+            title="Open Document Inspector"
+            className="md:hidden p-1.5 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-background-secondary border border-border transition-colors"
           >
-            {isRightPanelOpen ? (
-              <PanelRightClose className="h-4 w-4" />
-            ) : (
+            <Info className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Desktop Toggle Right Inspector (>=768px) */}
+          <button
+            onClick={toggleInspectorCollapsed}
+            title={isInspectorCollapsed ? 'Expand Inspector' : 'Collapse Inspector'}
+            className="hidden md:flex p-1.5 rounded-lg text-foreground-muted hover:text-foreground hover:bg-background-secondary transition-colors"
+          >
+            {isInspectorCollapsed ? (
               <PanelRightOpen className="h-4 w-4" />
+            ) : (
+              <PanelRightClose className="h-4 w-4" />
             )}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Formatting Toolbar */}
+      {/* 2. EDITOR TOOLBAR */}
       <MarkdownToolbar
         onInsert={handleInsert}
         onUndo={handleUndo}
@@ -314,48 +355,145 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
         onToggleFullScreen={toggleFullScreen}
       />
 
-      {/* Main Split / Edit / Preview Workspace */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Editor Pane */}
-        {(viewMode === 'split' || viewMode === 'edit') && (
-          <div
-            className={`flex-1 flex flex-col h-full bg-zinc-950 ${
-              viewMode === 'split' ? 'border-r border-zinc-800' : ''
-            }`}
-          >
-            <div className="flex-1 relative flex">
-              {/* Line Numbers Gutter */}
-              <div className="w-10 select-none py-4 text-right pr-2 text-zinc-600 font-mono text-xs leading-6 bg-zinc-950/80 border-r border-zinc-900 shrink-0">
-                {Array.from({ length: Math.min(lines, 500) }).map((_, i) => (
-                  <div key={i}>{i + 1}</div>
-                ))}
+      {/* Mobile-Only Tabs Header (<768px) */}
+      <div className="flex md:hidden border-b border-border bg-background-secondary p-1 shrink-0">
+        <button
+          onClick={() => setMobileTab('editor')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            mobileTab === 'editor'
+              ? 'bg-card text-foreground font-semibold shadow-xs'
+              : 'text-foreground-muted hover:text-foreground'
+          }`}
+        >
+          <Code2 className="h-3.5 w-3.5" />
+          <span>Source Editor</span>
+        </button>
+        <button
+          onClick={() => setMobileTab('preview')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            mobileTab === 'preview'
+              ? 'bg-card text-foreground font-semibold shadow-xs'
+              : 'text-foreground-muted hover:text-foreground'
+          }`}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>Live Preview</span>
+        </button>
+      </div>
+
+      {/* 3. CONTENT AREA: CSS GRID ARCHITECTURE */}
+      <div className="flex-1 w-full min-w-0 min-h-0 overflow-hidden relative">
+        {/* MOBILE LAYOUT (<768px) */}
+        <div className="flex md:hidden w-full h-full overflow-hidden">
+          {mobileTab === 'editor' ? (
+            <div className="flex-1 flex flex-col h-full bg-background overflow-hidden">
+              <div className="flex-1 relative flex h-full overflow-hidden">
+                <div
+                  ref={gutterRef}
+                  className="w-10 select-none py-3 text-right pr-2 text-foreground-muted font-mono text-xs leading-6 bg-background-secondary border-r border-border shrink-0 overflow-hidden"
+                >
+                  {Array.from({ length: Math.max(lines, 1) }).map((_, i) => (
+                    <div key={i}>{i + 1}</div>
+                  ))}
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onScroll={handleEditorScroll}
+                  wrap="off"
+                  placeholder="Write Markdown..."
+                  className="flex-1 w-full h-full p-3 bg-transparent text-foreground font-mono text-xs leading-6 resize-none focus:outline-none placeholder:text-foreground-muted whitespace-pre overflow-x-auto overflow-y-auto"
+                  spellCheck="false"
+                />
               </div>
-
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Write your technical blueprint or architectural specification in Markdown..."
-                className="flex-1 w-full h-full p-4 bg-transparent text-zinc-200 font-mono text-xs leading-6 resize-none focus:outline-none placeholder:text-zinc-700"
-                spellCheck="false"
-              />
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex-1 h-full w-full overflow-y-auto bg-background">
+              <MarkdownPreview content={content} />
+            </div>
+          )}
+        </div>
 
-        {/* Live Preview Pane */}
-        {(viewMode === 'split' || viewMode === 'preview') && (
-          <div className="flex-1 h-full overflow-hidden">
-            <MarkdownPreview content={content} />
-          </div>
-        )}
+        {/* DESKTOP CSS GRID (>=768px): [Editor/Preview Area] + [Inspector] */}
+        <div
+          className={`hidden md:grid h-full w-full min-w-0 overflow-hidden transition-all duration-75 ${
+            isInspectorCollapsed
+              ? 'grid-cols-[minmax(0,1fr)]'
+              : `grid-cols-[minmax(0,1fr)_auto_${inspectorWidth}px]`
+          }`}
+        >
+          {/* Column 1: Editor & Preview Split Workspace */}
+          <div
+            ref={splitContainerRef}
+            className={`h-full w-full min-w-0 overflow-hidden ${
+              viewMode === 'split'
+                ? 'grid'
+                : 'flex'
+            }`}
+            style={{
+              gridTemplateColumns:
+                viewMode === 'split'
+                  ? `minmax(320px, ${editorSplitRatio}fr) auto minmax(320px, ${100 - editorSplitRatio}fr)`
+                  : undefined
+            }}
+          >
+            {/* Editor Pane (in split or edit-only mode) */}
+            {(viewMode === 'split' || viewMode === 'edit') && (
+              <div className="flex flex-col h-full w-full min-w-0 bg-background overflow-hidden flex-1">
+                <div className="flex-1 relative flex h-full min-w-0 overflow-hidden">
+                  {/* Line Numbers Gutter */}
+                  <div
+                    ref={gutterRef}
+                    className="w-12 select-none py-4 text-right pr-2 text-foreground-muted font-mono text-xs leading-6 bg-background-secondary border-r border-border shrink-0 overflow-hidden"
+                  >
+                    {Array.from({ length: Math.max(lines, 1) }).map((_, i) => (
+                      <div key={i}>{i + 1}</div>
+                    ))}
+                  </div>
 
-        {/* Contextual Right Panel */}
-        {isRightPanelOpen && <ContextualRightPanel documentId={documentId} />}
+                  {/* Professional Source Code Editor (wrap=off, whitespace-pre, horizontal scrolling) */}
+                  <textarea
+                    ref={textareaRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onScroll={handleEditorScroll}
+                    wrap="off"
+                    placeholder="Write your technical blueprint or architectural specification in Markdown..."
+                    className="flex-1 w-full h-full p-4 bg-transparent text-foreground font-mono text-xs leading-6 resize-none focus:outline-none placeholder:text-foreground-muted whitespace-pre overflow-x-auto overflow-y-auto select-text"
+                    spellCheck="false"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Draggable Divider between Editor and Preview (Split Mode Only) */}
+            {viewMode === 'split' && (
+              <ResizeHandle
+                onResize={handleSplitResize}
+                onReset={resetEditorSplitRatio}
+                min={20}
+                max={80}
+                current={editorSplitRatio}
+                ariaLabel="Resize Editor and Preview Divider"
+                className="flex shrink-0"
+              />
+            )}
+
+            {/* Live Preview Pane (in split or preview-only mode) */}
+            {(viewMode === 'split' || viewMode === 'preview') && (
+              <div className="h-full w-full min-w-0 overflow-hidden bg-background flex-1 border-l border-border/40">
+                <MarkdownPreview content={content} />
+              </div>
+            )}
+          </div>
+
+          {/* Right Inspector Column (Desktop & Tablet) */}
+          <ContextualRightPanel documentId={documentId} />
+        </div>
       </div>
     </div>
   );
 }
-

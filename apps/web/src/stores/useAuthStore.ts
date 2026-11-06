@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
+import { useThemeStore } from './useThemeStore';
 
 export interface User {
   id: string;
@@ -14,6 +15,9 @@ export interface WorkspaceItem {
   slug: string;
   role?: string;
   logoUrl?: string | null;
+  settings?: {
+    themePreference?: string;
+  } | null;
 }
 
 interface AuthState {
@@ -84,7 +88,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           name: m.workspace.name,
           slug: m.workspace.slug,
           logoUrl: m.workspace.logoUrl,
-          role: m.role
+          role: m.role,
+          settings: m.workspace.settings
         }));
 
         let activeWs: WorkspaceItem | null = null;
@@ -98,6 +103,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         } else {
           activeWs = workspaces[0] || null;
+        }
+
+        if (activeWs?.settings?.themePreference) {
+          useThemeStore.getState().syncWithWorkspace(activeWs.settings.themePreference);
         }
 
         set({

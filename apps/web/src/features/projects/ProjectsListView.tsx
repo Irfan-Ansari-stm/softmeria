@@ -8,17 +8,13 @@ import {
   Plus,
   Upload,
   Search,
-  Filter,
-  ArrowRight,
-  Archive,
-  ExternalLink,
-  Layers
+  ArrowRight
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
+import { Card, CardHeader, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { CreateProjectModal } from './CreateProjectModal';
@@ -64,11 +60,11 @@ export function ProjectsListView() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
-            <FolderKanban className="h-6 w-6 text-indigo-500" />
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <FolderKanban className="h-6 w-6 text-primary" />
             <span>Software Projects</span>
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-foreground-muted mt-1">
             Manage your technical documentation workspaces, architecture blueprints, and engineering roadmaps.
           </p>
         </div>
@@ -98,13 +94,13 @@ export function ProjectsListView() {
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-foreground-muted" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search projects by name, description, or stack..."
-            className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
           />
         </div>
 
@@ -112,7 +108,7 @@ export function ProjectsListView() {
         <select
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value)}
-          className="h-9 px-3 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-auto"
+          className="h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-auto shadow-xs"
         >
           <option value="ALL">All Types</option>
           {PROJECT_TYPES.map((t) => (
@@ -126,7 +122,7 @@ export function ProjectsListView() {
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="h-9 px-3 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-auto"
+          className="h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-auto shadow-xs"
         >
           <option value="ALL">All Statuses</option>
           {PROJECT_STATUSES.map((s) => (
@@ -140,10 +136,10 @@ export function ProjectsListView() {
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredProjects.length === 0 ? (
-          <div className="col-span-full py-16 text-center border border-dashed border-zinc-800 rounded-xl space-y-3">
-            <FolderKanban className="h-10 w-10 text-zinc-600 mx-auto" />
-            <h3 className="text-sm font-semibold text-zinc-300">No projects found</h3>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+          <div className="col-span-full py-16 text-center border border-dashed border-border rounded-xl space-y-3 bg-card">
+            <FolderKanban className="h-10 w-10 text-foreground-muted mx-auto" />
+            <h3 className="text-sm font-semibold text-foreground">No projects found</h3>
+            <p className="text-xs text-foreground-muted max-w-sm mx-auto">
               Get started by creating your first software project or importing an existing Markdown repository.
             </p>
             <Button
@@ -160,25 +156,25 @@ export function ProjectsListView() {
           filteredProjects.map((project: any) => (
             <Card
               key={project.id}
-              className="hover:border-zinc-700/80 transition-all flex flex-col justify-between group shadow-md"
+              className="hover:border-primary/50 transition-all flex flex-col justify-between group shadow-sm"
             >
               <CardHeader className="p-5 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className="h-9 w-9 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm"
-                      style={{ backgroundColor: project.color || '#4f46e5' }}
+                      style={{ backgroundColor: project.color || '#2563EB' }}
                     >
                       <FolderKanban className="h-4.5 w-4.5" />
                     </div>
                     <div className="min-w-0">
                       <Link
                         href={`/projects/${project.id}`}
-                        className="font-semibold text-sm text-zinc-100 hover:text-indigo-400 transition-colors truncate block"
+                        className="font-semibold text-sm text-foreground hover:text-primary transition-colors truncate block"
                       >
                         {project.name}
                       </Link>
-                      <span className="text-[11px] text-zinc-500">
+                      <span className="text-[11px] text-foreground-muted">
                         {project.projectType}
                       </span>
                     </div>
@@ -189,7 +185,7 @@ export function ProjectsListView() {
                 </div>
 
                 {project.description && (
-                  <p className="text-xs text-zinc-400 line-clamp-2 mt-3 leading-relaxed">
+                  <p className="text-xs text-foreground-secondary line-clamp-2 mt-3 leading-relaxed">
                     {project.description}
                   </p>
                 )}
@@ -202,13 +198,13 @@ export function ProjectsListView() {
                     {project.techStack.slice(0, 4).map((tech: string) => (
                       <span
                         key={tech}
-                        className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] font-mono text-zinc-300"
+                        className="px-2 py-0.5 rounded bg-secondary text-[10px] font-mono text-foreground-secondary border border-border"
                       >
                         {tech}
                       </span>
                     ))}
                     {project.techStack.length > 4 && (
-                      <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-500 font-mono">
+                      <span className="px-1.5 py-0.5 rounded bg-secondary text-[10px] text-foreground-muted font-mono border border-border">
                         +{project.techStack.length - 4}
                       </span>
                     )}
@@ -218,21 +214,21 @@ export function ProjectsListView() {
                 {/* Documentation Completion */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-500">Documentation Completion</span>
-                    <span className="font-mono text-zinc-300 font-semibold">
+                    <span className="text-foreground-muted">Documentation Completion</span>
+                    <span className="font-mono text-foreground font-semibold">
                       {project.completionPercentage}% ({project.completedDocuments}/{project.totalDocuments})
                     </span>
                   </div>
                   <Progress value={project.completionPercentage} size="sm" />
                 </div>
 
-                <div className="pt-3 border-t border-zinc-800/60 flex items-center justify-between text-xs">
-                  <span className="text-zinc-500 text-[11px]">
+                <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
+                  <span className="text-foreground-muted text-[11px]">
                     Updated {new Date(project.updatedAt).toLocaleDateString()}
                   </span>
                   <Link
                     href={`/projects/${project.id}`}
-                    className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
+                    className="text-primary hover:underline font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
                   >
                     <span>Open Workspace</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -258,4 +254,3 @@ export function ProjectsListView() {
     </div>
   );
 }
-

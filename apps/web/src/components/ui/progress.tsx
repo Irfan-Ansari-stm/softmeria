@@ -24,23 +24,23 @@ export function Progress({
   };
 
   const getProgressColor = (v: number) => {
-    if (v >= 80) return 'bg-emerald-500';
-    if (v >= 40) return 'bg-indigo-500';
-    return 'bg-amber-500';
+    if (v >= 80) return 'bg-success';
+    if (v >= 40) return 'bg-primary';
+    return 'bg-warning';
   };
 
   return (
     <div className="w-full space-y-1">
       {showLabel && (
-        <div className="flex justify-between items-center text-xs text-zinc-400">
+        <div className="flex justify-between items-center text-xs text-foreground-muted">
           <span>Completion</span>
-          <span className="font-semibold text-zinc-200">{clamped}%</span>
+          <span className="font-semibold text-foreground">{clamped}%</span>
         </div>
       )}
       <div
         className={twMerge(
           clsx(
-            'w-full bg-zinc-800 rounded-full overflow-hidden',
+            'w-full bg-secondary rounded-full overflow-hidden',
             sizeStyles[size],
             className
           )
@@ -60,4 +60,3 @@ export function Progress({
     </div>
   );
 }
-

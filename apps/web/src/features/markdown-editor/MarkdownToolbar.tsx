@@ -24,7 +24,6 @@ import {
   Undo,
   Redo
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
 import { ViewMode } from '../../stores/useEditorStore';
 
 interface MarkdownToolbarProps {
@@ -47,78 +46,78 @@ export function MarkdownToolbar({
   onToggleFullScreen
 }: MarkdownToolbarProps) {
   return (
-    <div className="h-10 border-b border-zinc-800 bg-zinc-900/90 px-3 flex items-center justify-between gap-2 overflow-x-auto text-zinc-400 select-none">
+    <div className="h-10 border-b border-border bg-background-secondary/90 px-3 flex items-center justify-between gap-2 overflow-x-auto text-foreground-secondary select-none">
       {/* Left Toolbar Formatting Buttons */}
       <div className="flex items-center gap-0.5">
         <button
           onClick={onUndo}
           title="Undo"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Undo className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={onRedo}
           title="Redo"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Redo className="h-3.5 w-3.5" />
         </button>
 
-        <div className="h-4 w-px bg-zinc-800 mx-1" />
+        <div className="h-4 w-px bg-border mx-1" />
 
         <button
           onClick={() => onInsert('# ', '', 'Heading 1')}
           title="Heading 1"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Heading1 className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('## ', '', 'Heading 2')}
           title="Heading 2"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Heading2 className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('### ', '', 'Heading 3')}
           title="Heading 3"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Heading3 className="h-3.5 w-3.5" />
         </button>
 
-        <div className="h-4 w-px bg-zinc-800 mx-1" />
+        <div className="h-4 w-px bg-border mx-1" />
 
         <button
           onClick={() => onInsert('**', '**', 'bold text')}
           title="Bold (Ctrl+B)"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Bold className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('*', '*', 'italic text')}
           title="Italic (Ctrl+I)"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Italic className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('~~', '~~', 'strikethrough')}
           title="Strikethrough"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Strikethrough className="h-3.5 w-3.5" />
         </button>
 
-        <div className="h-4 w-px bg-zinc-800 mx-1" />
+        <div className="h-4 w-px bg-border mx-1" />
 
         <button
           onClick={() => onInsert('```typescript\n', '\n```', '// code here')}
           title="Code Block"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Code className="h-3.5 w-3.5" />
         </button>
@@ -129,49 +128,49 @@ export function MarkdownToolbar({
             )
           }
           title="Insert Table"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Table className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('- [ ] ', '', 'Task item')}
           title="Checklist Item"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <CheckSquare className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('- ', '', 'Bullet item')}
           title="Bullet List"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <List className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('1. ', '', 'Numbered item')}
           title="Numbered List"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <ListOrdered className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('> ', '', 'Quoted text')}
           title="Blockquote"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Quote className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('[', '](https://example.com)', 'Link title')}
           title="Insert Link"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Link className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => onInsert('\n---\n')}
           title="Horizontal Rule"
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>
@@ -179,14 +178,14 @@ export function MarkdownToolbar({
 
       {/* Right View Mode & Fullscreen Controls */}
       <div className="flex items-center gap-1">
-        <div className="flex items-center p-0.5 rounded-md bg-zinc-950 border border-zinc-800">
+        <div className="flex items-center p-0.5 rounded-lg bg-background border border-border shadow-xs">
           <button
             onClick={() => onViewModeChange('edit')}
             title="Editor Only"
-            className={`p-1 rounded text-xs transition-colors ${
+            className={`p-1 rounded-md text-xs transition-colors ${
               viewMode === 'edit'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-secondary text-foreground font-semibold shadow-xs'
+                : 'text-foreground-muted hover:text-foreground'
             }`}
           >
             <Edit3 className="h-3.5 w-3.5" />
@@ -194,10 +193,10 @@ export function MarkdownToolbar({
           <button
             onClick={() => onViewModeChange('split')}
             title="Split View"
-            className={`p-1 rounded text-xs transition-colors ${
+            className={`p-1 rounded-md text-xs transition-colors ${
               viewMode === 'split'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-secondary text-foreground font-semibold shadow-xs'
+                : 'text-foreground-muted hover:text-foreground'
             }`}
           >
             <Columns2 className="h-3.5 w-3.5" />
@@ -205,10 +204,10 @@ export function MarkdownToolbar({
           <button
             onClick={() => onViewModeChange('preview')}
             title="Preview Only"
-            className={`p-1 rounded text-xs transition-colors ${
+            className={`p-1 rounded-md text-xs transition-colors ${
               viewMode === 'preview'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-secondary text-foreground font-semibold shadow-xs'
+                : 'text-foreground-muted hover:text-foreground'
             }`}
           >
             <Eye className="h-3.5 w-3.5" />
@@ -218,7 +217,7 @@ export function MarkdownToolbar({
         <button
           onClick={onToggleFullScreen}
           title={isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
-          className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors ml-1"
+          className="p-1.5 rounded-lg hover:bg-background-tertiary hover:text-foreground transition-colors ml-1"
         >
           {isFullScreen ? (
             <Minimize2 className="h-3.5 w-3.5" />
@@ -230,4 +229,3 @@ export function MarkdownToolbar({
     </div>
   );
 }
-

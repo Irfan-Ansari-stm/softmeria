@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { FolderKanban, Plus, X, Layers } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Dialog } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -30,7 +30,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [techStackInput, setTechStackInput] = useState('');
   const [techStack, setTechStack] = useState<string[]>(['Next.js', 'TypeScript', 'PostgreSQL']);
   const [repositoryUrl, setRepositoryUrl] = useState('');
-  const [color, setColor] = useState('#4f46e5');
+  const [color, setColor] = useState('#2563EB');
   const [visibility, setVisibility] = useState<string>('PRIVATE');
   const [initDefaultCategories, setInitDefaultCategories] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,34 +84,33 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     }
   });
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    createProjectMutation.mutate();
+  };
+
   const colors = [
-    '#4f46e5', // indigo
-    '#10b981', // emerald
-    '#3b82f6', // blue
-    '#f59e0b', // amber
-    '#ec4899', // pink
-    '#8b5cf6', // purple
-    '#06b6d4', // cyan
-    '#ef4444'  // rose
+    '#2563EB', // Blue
+    '#059669', // Emerald
+    '#D97706', // Amber
+    '#7C3AED', // Violet
+    '#DC2626', // Red
+    '#0891B2', // Cyan
+    '#DB2777'  // Pink
   ];
 
   return (
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Create New Software Project"
-      description="Define project architecture parameters and initialize standard engineering blueprint documentation."
-      maxWidth="lg"
+      title="Create Engineering Project"
+      description="Initialize a centralized technical blueprint architecture workspace for your application."
+      maxWidth="xl"
     >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          createProjectMutation.mutate();
-        }}
-        className="space-y-4"
-      >
+      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
         {error && (
-          <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-xs text-rose-300">
+          <div className="p-3 rounded-lg bg-destructive/15 border border-destructive/30 text-xs text-destructive">
             {error}
           </div>
         )}
@@ -143,11 +142,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-300">Project Type</label>
+            <label className="text-xs font-medium text-foreground-secondary">Project Type</label>
             <select
               value={projectType}
               onChange={(e) => setProjectType(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-zinc-800 bg-zinc-950 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
             >
               {PROJECT_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -158,11 +157,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-300">Visibility</label>
+            <label className="text-xs font-medium text-foreground-secondary">Visibility</label>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value)}
-              className="w-full h-9 px-3 rounded-md border border-zinc-800 bg-zinc-950 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full h-9 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
             >
               {PROJECT_VISIBILITIES.map((v) => (
                 <option key={v} value={v}>
@@ -175,20 +174,20 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
         {/* Tech Stack Chips Input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-300">
+          <label className="text-xs font-medium text-foreground-secondary">
             Technology Stack (Press Enter or Comma to add)
           </label>
-          <div className="min-h-[40px] p-2 rounded-md border border-zinc-800 bg-zinc-950 flex flex-wrap gap-1.5 items-center">
+          <div className="min-h-[40px] p-2 rounded-lg border border-border bg-background flex flex-wrap gap-1.5 items-center shadow-xs">
             {techStack.map((tech) => (
               <span
                 key={tech}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-xs text-zinc-200 font-mono"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-secondary text-xs text-foreground-secondary font-mono border border-border"
               >
                 <span>{tech}</span>
                 <button
                   type="button"
                   onClick={() => handleRemoveTech(tech)}
-                  className="hover:text-rose-400"
+                  className="hover:text-destructive"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -200,7 +199,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               onChange={(e) => setTechStackInput(e.target.value)}
               onKeyDown={handleAddTech}
               placeholder="Add tech (e.g. Next.js, Redis)..."
-              className="bg-transparent text-xs text-zinc-100 focus:outline-none flex-1 min-w-[120px]"
+              className="bg-transparent text-xs text-foreground focus:outline-none flex-1 min-w-[120px]"
             />
           </div>
         </div>
@@ -214,7 +213,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
         {/* Accent Color Selection */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-300">Project Accent Color</label>
+          <label className="text-xs font-medium text-foreground-secondary">Project Accent Color</label>
           <div className="flex items-center gap-2">
             {colors.map((c) => (
               <button
@@ -222,7 +221,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 type="button"
                 onClick={() => setColor(c)}
                 className={`h-6 w-6 rounded-full transition-transform ${
-                  color === c ? 'scale-125 ring-2 ring-white ring-offset-2 ring-offset-zinc-900' : 'hover:scale-110'
+                  color === c ? 'scale-125 ring-2 ring-primary ring-offset-2 ring-offset-background' : 'hover:scale-110'
                 }`}
                 style={{ backgroundColor: c }}
               />
@@ -231,28 +230,28 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         </div>
 
         {/* Default Blueprint Structure Checkbox */}
-        <div className="p-3.5 rounded-lg border border-indigo-900/50 bg-indigo-950/20 space-y-1.5">
+        <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5">
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="initDefaultCategories"
               checked={initDefaultCategories}
               onChange={(e) => setInitDefaultCategories(e.target.checked)}
-              className="rounded border-zinc-700 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
             />
             <label
               htmlFor="initDefaultCategories"
-              className="text-xs font-semibold text-indigo-200 cursor-pointer"
+              className="text-xs font-semibold text-primary cursor-pointer"
             >
               Generate Complete Blueprint Structure (Recommended)
             </label>
           </div>
-          <p className="text-[11px] text-zinc-400 pl-6 leading-relaxed">
+          <p className="text-[11px] text-foreground-muted pl-6 leading-relaxed">
             Automatically provisions all 8 architectural categories (Product, Design, Frontend, Backend, Infrastructure, Quality & Security, Data & Integrations, Governance) with 47 pre-configured engineering documents.
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-zinc-800">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border">
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
             Cancel
           </Button>

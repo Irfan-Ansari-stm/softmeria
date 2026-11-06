@@ -38,23 +38,23 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
-        <div className="mx-auto h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
+        <div className="mx-auto h-12 w-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30">
           <Layers className="h-6 w-6" />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
           Create DevBlueprint Account
         </h2>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-foreground-muted">
           Establish an isolated engineering workspace for your team
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-zinc-900/90 py-8 px-6 shadow-xl border border-zinc-800 sm:rounded-xl sm:px-10 space-y-6">
+        <div className="bg-card py-8 px-6 shadow-xl border border-border sm:rounded-xl sm:px-10 space-y-6">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-xs text-rose-300">
+            <div className="p-3 rounded-lg bg-destructive/15 border border-destructive/30 text-xs text-destructive font-medium">
               {error}
             </div>
           )}
@@ -90,18 +90,18 @@ export default function RegisterPage() {
               type="submit"
               variant="primary"
               size="md"
-              className="w-full text-xs"
+              className="w-full text-xs shadow-sm"
               isLoading={isLoading}
             >
-              Create Account & Initialize Workspace
+              Get Started with Light Mode
             </Button>
           </form>
 
-          <div className="text-center pt-2 text-xs text-zinc-500">
+          <div className="text-center pt-2 text-xs text-foreground-muted">
             Already have an account?{' '}
             <Link
               href="/login"
-              className="text-indigo-400 hover:text-indigo-300 font-medium"
+              className="text-primary hover:underline font-medium"
             >
               Sign in
             </Link>
@@ -111,4 +111,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

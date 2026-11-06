@@ -12,7 +12,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full space-y-1.5">
         {label && (
-          <label htmlFor={id} className="block text-xs font-medium text-zinc-300">
+          <label htmlFor={id} className="block text-xs font-medium text-foreground-secondary">
             {label}
           </label>
         )}
@@ -21,18 +21,17 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           className={twMerge(
             clsx(
-              'flex h-9 w-full rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-1 text-sm text-zinc-100 shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50',
-              error && 'border-rose-500 focus-visible:ring-rose-500',
+              'flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50',
+              error && 'border-destructive focus-visible:ring-destructive',
               className
             )
           )}
           {...props}
         />
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
     );
   }
 );
 
 Input.displayName = 'Input';
-

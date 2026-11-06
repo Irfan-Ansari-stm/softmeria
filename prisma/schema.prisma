@@ -393,7 +393,7 @@ model WorkspaceSetting {
   id               String   @id @default(uuid())
   workspaceId      String   @unique
   defaultStructure String?
-  themePreference  String   @default("system")
+  themePreference  String   @default("light")
   notifyOnComment  Boolean  @default(true)
   notifyOnReview   Boolean  @default(true)
   createdAt        DateTime @default(now())

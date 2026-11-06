@@ -5,7 +5,7 @@ import { ProjectsListView } from '../../../features/projects/ProjectsListView';
 
 export default function ProjectsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-xs text-zinc-500">Loading projects...</div>}>
+    <Suspense fallback={<div className="p-8 text-xs text-foreground-muted">Loading projects...</div>}>
       <ProjectsListView />
     </Suspense>
   );

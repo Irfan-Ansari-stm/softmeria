@@ -22,19 +22,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseClasses =
-      'inline-flex items-center justify-center font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none select-none';
+      'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none select-none';
 
     const variantClasses = {
       primary:
-        'bg-indigo-600 text-white hover:bg-indigo-500 active:bg-indigo-700 shadow-sm',
+        'bg-primary text-primary-foreground hover:opacity-90 active:opacity-100 shadow-sm font-semibold',
       secondary:
-        'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/60 shadow-sm',
+        'bg-secondary text-secondary-foreground hover:bg-background-tertiary border border-border shadow-sm',
       outline:
-        'bg-transparent border border-zinc-700 text-zinc-200 hover:bg-zinc-800/80 active:bg-zinc-800',
+        'bg-transparent border border-border text-foreground hover:bg-background-secondary active:bg-background-tertiary',
       ghost:
-        'bg-transparent text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100',
+        'bg-transparent text-foreground-secondary hover:bg-background-secondary hover:text-foreground',
       danger:
-        'bg-rose-600 text-white hover:bg-rose-500 active:bg-rose-700 shadow-sm'
+        'bg-destructive text-destructive-foreground hover:opacity-90 active:opacity-100 shadow-sm'
     };
 
     const sizeClasses = {
@@ -76,7 +76,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             <path
               className="opacity-75"
               fill="currentColor"
-              d="M4 12a8 8 0 018-8v8H4z"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
         )}
@@ -87,4 +87,3 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = 'Button';
-

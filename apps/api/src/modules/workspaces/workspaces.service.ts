@@ -102,7 +102,7 @@ export class WorkspaceService {
         },
         settings: {
           create: {
-            themePreference: 'system'
+            themePreference: 'light'
           }
         }
       }
@@ -147,7 +147,7 @@ export class WorkspaceService {
         settings: {
           upsert: {
             create: {
-              themePreference: data.themePreference || 'system',
+              themePreference: data.themePreference || 'light',
               notifyOnComment: data.notifyOnComment ?? true,
               notifyOnReview: data.notifyOnReview ?? true
             },

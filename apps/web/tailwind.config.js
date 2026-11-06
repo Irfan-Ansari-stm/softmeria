@@ -11,8 +11,16 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        background: {
+          DEFAULT: 'hsl(var(--background))',
+          secondary: 'hsl(var(--background-secondary))',
+          tertiary: 'hsl(var(--background-tertiary))'
+        },
+        foreground: {
+          DEFAULT: 'hsl(var(--foreground))',
+          secondary: 'hsl(var(--foreground-secondary))',
+          muted: 'hsl(var(--foreground-muted))'
+        },
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))'
@@ -24,6 +32,14 @@ module.exports = {
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))'
+        },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))'
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))'
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',

@@ -21,7 +21,7 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
     <div
       className={twMerge(
         clsx(
-          'flex items-center space-x-1 border-b border-zinc-800 pb-px text-sm',
+          'flex items-center space-x-1 border-b border-border pb-px text-sm',
           className
         )
       )}
@@ -34,10 +34,10 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
             onClick={() => onChange(tab.id)}
             className={twMerge(
               clsx(
-                'flex items-center gap-2 px-3 py-2 font-medium text-xs rounded-t-md transition-all border-b-2',
+                'flex items-center gap-2 px-3 py-2 font-medium text-xs rounded-t-lg transition-all border-b-2',
                 isActive
-                  ? 'border-indigo-500 text-indigo-400 bg-zinc-800/40'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/20'
+                  ? 'border-primary text-primary bg-primary/10'
+                  : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-background-secondary'
               )
             )}
           >
@@ -48,8 +48,8 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
                 className={clsx(
                   'px-1.5 py-0.5 rounded-full text-[10px] font-semibold',
                   isActive
-                    ? 'bg-indigo-950 text-indigo-300'
-                    : 'bg-zinc-800 text-zinc-400'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-foreground-muted'
                 )}
               >
                 {tab.count}
@@ -61,4 +61,3 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
     </div>
   );
 }
-

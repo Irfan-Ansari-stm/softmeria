@@ -6,21 +6,22 @@ import {
   History,
   MessageSquare,
   CheckCircle,
-  Clock,
   Download,
   RotateCcw,
   Send,
   Check,
   Tag,
-  AlertCircle,
   FileCheck,
-  FileX
+  FileX,
+  PanelRightClose
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/useEditorStore';
+import { useLayoutStore } from '../../stores/useLayoutStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import { ResizeHandle } from '../../components/ui/ResizeHandle';
 import { DOCUMENT_STATUSES } from '@devblueprint/shared';
 import * as diff from 'diff';
 
@@ -31,7 +32,6 @@ interface ContextualRightPanelProps {
 export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) {
   const queryClient = useQueryClient();
   const {
-    title,
     status,
     isOptional,
     versionNumber,
@@ -41,6 +41,16 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
     setActiveRightTab,
     setSavedSuccessfully
   } = useEditorStore();
+
+  const {
+    inspectorWidth,
+    setInspectorWidth,
+    resetInspectorWidth,
+    isInspectorCollapsed,
+    toggleInspectorCollapsed,
+    isMobileInspectorOpen,
+    setMobileInspectorOpen
+  } = useLayoutStore();
 
   const [commentInput, setCommentInput] = useState('');
   const [reviewNotes, setReviewNotes] = useState('');
@@ -89,7 +99,6 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
       setSavedSuccessfully(data.versionNumber);
       setSelectedVersionForDiff(null);
       refetch();
-      queryClient.invalidateQueries({ queryKey: ['project'] });
     }
   });
 
@@ -101,7 +110,6 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
     },
     onSuccess: () => {
       setReviewNotes('');
-      setStatus('IN_REVIEW');
       refetch();
     }
   });
@@ -115,9 +123,9 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
     }: {
       requestId: string;
       reviewStatus: string;
-      comment: string;
+      comment?: string;
     }) => {
-      const res = await api.post(`/reviews/${requestId}/approval`, {
+      const res = await api.post(`/reviews/${requestId}/approvals`, {
         status: reviewStatus,
         comment
       });
@@ -130,7 +138,10 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
   });
 
   const handleExport = () => {
-    window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/documents/${documentId}/export`, '_blank');
+    window.open(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/documents/${documentId}/export`,
+      '_blank'
+    );
   };
 
   const tabs = [
@@ -150,44 +161,65 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
     { id: 'review', label: 'Review', icon: <CheckCircle className="h-3.5 w-3.5" /> }
   ];
 
-  return (
-    <aside className="w-80 border-l border-zinc-800 bg-zinc-950 flex flex-col h-full text-xs select-none shrink-0 overflow-hidden">
-      {/* Tab Switcher */}
-      <div className="flex border-b border-zinc-800 bg-zinc-900/60 p-1">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveRightTab(t.id as any)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium text-[11px] transition-colors ${
-              activeRightTab === t.id
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {t.icon}
-            <span>{t.label}</span>
-            {t.count !== undefined && t.count > 0 && (
-              <span className="text-[10px] px-1 rounded-full bg-zinc-700/80 text-zinc-300">
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
+  const handleResize = (deltaX: number) => {
+    // Left boundary resize: moving mouse left increases width
+    setInspectorWidth(inspectorWidth - deltaX);
+  };
+
+  const panelContent = (
+    <div className="flex flex-col h-full overflow-hidden w-full">
+      {/* Tab Switcher & Collapse Header */}
+      <div className="flex items-center justify-between border-b border-border bg-background-secondary p-1 shrink-0">
+        <div className="flex flex-1 gap-1 min-w-0">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveRightTab(t.id as any)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-lg font-medium text-[11px] transition-colors truncate ${
+                activeRightTab === t.id
+                  ? 'bg-card text-foreground font-semibold shadow-xs'
+                  : 'text-foreground-muted hover:text-foreground'
+              }`}
+            >
+              {t.icon}
+              <span className="truncate">{t.label}</span>
+              {t.count !== undefined && t.count > 0 && (
+                <span className="text-[10px] px-1 rounded-full bg-secondary text-foreground-secondary shrink-0">
+                  {t.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Collapse button on desktop / close on mobile */}
+        <button
+          onClick={() => {
+            toggleInspectorCollapsed();
+            setMobileInspectorOpen(false);
+          }}
+          className="p-1.5 rounded-md text-foreground-muted hover:text-foreground hover:bg-background-tertiary transition-colors ml-1 shrink-0"
+          title="Close Inspector"
+          aria-label="Close Inspector"
+        >
+          <PanelRightClose className="h-4 w-4" />
+        </button>
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Panels with independent scrolling */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Tab 1: Metadata */}
         {activeRightTab === 'metadata' && (
           <div className="space-y-4">
-            {/* Status Selector */}
+            {/* Compact Status Selector */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-zinc-400">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted block">
                 Document Status
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full h-8 px-2.5 rounded-md border border-zinc-800 bg-zinc-900 text-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full h-8 px-2.5 rounded-lg border border-border bg-background-secondary text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-xs cursor-pointer"
               >
                 {DOCUMENT_STATUSES.map((st) => (
                   <option key={st} value={st}>
@@ -197,72 +229,88 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
               </select>
             </div>
 
-            {/* Optional Document Toggle */}
-            <div className="p-3 rounded-lg border border-zinc-800/80 bg-zinc-900/40 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-zinc-200">
-                  Optional Blueprint
-                </span>
+            <div className="border-t border-border pt-3">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted block mb-1.5">
+                Blueprint Requirements
+              </label>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-background-secondary border border-border">
+                <div className="space-y-0.5 min-w-0 pr-2">
+                  <p className="text-xs font-medium text-foreground">Optional Document</p>
+                  <p className="text-[10px] text-foreground-muted">Excluded from blueprint completion rate</p>
+                </div>
                 <input
                   type="checkbox"
                   checked={isOptional}
                   onChange={(e) => setIsOptional(e.target.checked)}
-                  className="rounded border-zinc-700 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer shrink-0"
                 />
               </div>
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
-                When marked optional, this document does not penalize total project completion percentage.
-              </p>
             </div>
 
-            {/* Document Info */}
-            <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>File Name:</span>
-                <span className="font-mono text-zinc-300 truncate max-w-[150px]">
-                  {docData?.fileName || 'document.md'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Current Version:</span>
-                <span className="font-mono text-zinc-200">v{versionNumber}</span>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Category:</span>
-                <span className="text-zinc-300">{docData?.categoryName}</span>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Created By:</span>
-                <span className="text-zinc-300">{docData?.createdBy?.name}</span>
+            <div className="border-t border-border pt-3 space-y-2">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted block">
+                Document Information
+              </label>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-border/50 gap-2">
+                  <span className="text-foreground-muted shrink-0">File Name</span>
+                  <span
+                    className="font-mono text-foreground font-medium truncate max-w-[180px] text-right"
+                    title={docData?.fileName}
+                  >
+                    {docData?.fileName || '-'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-border/50 gap-2">
+                  <span className="text-foreground-muted shrink-0">Current Version</span>
+                  <span className="font-mono text-foreground font-medium">v{versionNumber}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-border/50 gap-2">
+                  <span className="text-foreground-muted shrink-0">Category</span>
+                  <span className="text-foreground font-medium truncate max-w-[180px] text-right">
+                    {docData?.category?.name || '-'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-border/50 gap-2">
+                  <span className="text-foreground-muted shrink-0">Created By</span>
+                  <span className="text-foreground font-medium truncate max-w-[180px] text-right">
+                    {docData?.createdBy?.name || '-'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Tags */}
-            <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-              <div className="flex items-center gap-1.5 text-zinc-400 font-medium text-[11px]">
+            {/* Document Tags */}
+            <div className="border-t border-border pt-3 space-y-2">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted flex items-center gap-1.5">
                 <Tag className="h-3 w-3" />
                 <span>Tags</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {(docData?.tags || []).length === 0 ? (
-                  <span className="text-zinc-600 italic">No tags assigned</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {(docData?.documentTags || []).length === 0 ? (
+                  <span className="text-foreground-muted text-[11px] italic">No tags attached</span>
                 ) : (
-                  docData.tags.map((tag: string) => (
-                    <Badge key={tag} variant="outline" className="text-[10px]">
-                      {tag}
+                  docData.documentTags.map((dt: any) => (
+                    <Badge
+                      key={dt.tag.id}
+                      variant="outline"
+                      className="text-[10px]"
+                      style={{ borderColor: dt.tag.color, color: dt.tag.color }}
+                    >
+                      {dt.tag.name}
                     </Badge>
                   ))
                 )}
               </div>
             </div>
 
-            {/* Export Action */}
-            <div className="pt-4 border-t border-zinc-800/60">
+            {/* Export Actions */}
+            <div className="border-t border-border pt-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExport}
-                className="w-full text-xs gap-1.5 justify-center"
+                className="w-full text-xs gap-1.5 border-border"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Export as Markdown (.md)</span>
@@ -271,93 +319,78 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
           </div>
         )}
 
-        {/* Tab 2: Version History & Diff */}
+        {/* Tab 2: Version History & Visual Diff */}
         {activeRightTab === 'versions' && (
-          <div className="space-y-3">
-            <p className="text-[11px] text-zinc-400">
-              Immutable content snapshots recorded automatically on major changes.
-            </p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-foreground">
+                Revisions ({docData?.versions?.length || 0})
+              </span>
+              <span className="text-[10px] text-foreground-muted">Click to view diff</span>
+            </div>
 
-            {/* Version Diff Viewer if selected */}
             {selectedVersionForDiff && (
-              <div className="p-3 rounded-lg border border-indigo-900/60 bg-indigo-950/20 space-y-2">
+              <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-indigo-300">
+                  <span className="font-semibold text-xs text-primary truncate">
                     Comparing v{selectedVersionForDiff.versionNumber} with current
                   </span>
-                  <button
-                    onClick={() => setSelectedVersionForDiff(null)}
-                    className="text-zinc-400 hover:text-zinc-200"
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] gap-1 px-2 border-primary/40 text-primary shrink-0"
+                    onClick={() => restoreVersionMutation.mutate(selectedVersionForDiff.versionNumber)}
+                    isLoading={restoreVersionMutation.isPending}
                   >
-                    ×
-                  </button>
+                    <RotateCcw className="h-3 w-3" /> Restore
+                  </Button>
                 </div>
-                <div className="max-h-48 overflow-y-auto font-mono text-[10px] space-y-0.5 bg-zinc-950 p-2 rounded">
+                <div className="max-h-48 overflow-y-auto font-mono text-[10px] bg-background p-2 rounded-lg border border-border leading-relaxed">
                   {diff
-                    .diffLines(selectedVersionForDiff.content, docData?.content || '')
-                    .map((part, index) => (
-                      <div
-                        key={index}
-                        className={
-                          part.added
-                            ? 'bg-emerald-950/80 text-emerald-300'
-                            : part.removed
-                            ? 'bg-rose-950/80 text-rose-300'
-                            : 'text-zinc-400'
-                        }
-                      >
-                        {part.added ? '+ ' : part.removed ? '- ' : '  '}
-                        {part.value}
-                      </div>
-                    ))}
+                    .diffLines(selectedVersionForDiff.content || '', docData?.content || '')
+                    .map((part, index) => {
+                      const color = part.added
+                        ? 'text-success bg-success/10'
+                        : part.removed
+                        ? 'text-destructive bg-destructive/10'
+                        : 'text-foreground-muted';
+                      return (
+                        <div key={index} className={color}>
+                          {part.added ? '+ ' : part.removed ? '- ' : '  '}
+                          {part.value}
+                        </div>
+                      );
+                    })}
                 </div>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() =>
-                    restoreVersionMutation.mutate(selectedVersionForDiff.versionNumber)
-                  }
-                  isLoading={restoreVersionMutation.isPending}
-                  className="w-full text-xs gap-1.5"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  <span>Restore v{selectedVersionForDiff.versionNumber} as latest</span>
-                </Button>
               </div>
             )}
 
-            {/* Versions List */}
             <div className="space-y-2">
-              {(docData?.versions || []).map((v: any) => (
+              {(docData?.versions || []).map((ver: any) => (
                 <div
-                  key={v.id}
-                  className="p-2.5 rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-900 space-y-1.5 transition-colors"
+                  key={ver.id}
+                  onClick={() => setSelectedVersionForDiff(ver)}
+                  className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
+                    selectedVersionForDiff?.id === ver.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:bg-background-tertiary'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-zinc-200 font-mono">
-                      v{v.versionNumber}
+                    <span className="font-mono font-semibold text-xs text-foreground">
+                      v{ver.versionNumber}
                     </span>
-                    <span className="text-[10px] text-zinc-500">
-                      {new Date(v.createdAt).toLocaleDateString()}
+                    <span className="text-[10px] text-foreground-muted">
+                      {new Date(ver.createdAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-400">
-                    {v.changeSummary || 'Snapshot update'}
-                  </p>
-                  <div className="flex items-center justify-between pt-1 border-t border-zinc-800/40">
-                    <span className="text-[10px] text-zinc-500">{v.authorName}</span>
-                    <button
-                      onClick={async () => {
-                        const res = await api.get<any>(
-                          `/documents/${documentId}/versions/${v.versionNumber}`
-                        );
-                        setSelectedVersionForDiff(res.data);
-                      }}
-                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium"
-                    >
-                      Compare / Restore
-                    </button>
-                  </div>
+                  {ver.changeSummary && (
+                    <p className="text-[11px] text-foreground-secondary mt-1">{ver.changeSummary}</p>
+                  )}
+                  <p className="text-[10px] text-foreground-muted mt-1">By {ver.user?.name || 'User'}</p>
                 </div>
               ))}
             </div>
@@ -366,15 +399,14 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
 
         {/* Tab 3: Comments */}
         {activeRightTab === 'comments' && (
-          <div className="space-y-3 flex flex-col h-full">
-            {/* Comment Post Box */}
+          <div className="space-y-4">
             <div className="space-y-2">
               <textarea
                 value={commentInput}
                 onChange={(e) => setCommentInput(e.target.value)}
-                placeholder="Leave feedback or architectural note..."
+                placeholder="Leave an architectural feedback comment..."
                 rows={3}
-                className="w-full p-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full p-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
               />
               <Button
                 size="sm"
@@ -382,50 +414,28 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
                 onClick={() => postCommentMutation.mutate(commentInput)}
                 disabled={!commentInput.trim()}
                 isLoading={postCommentMutation.isPending}
-                className="w-full text-xs gap-1.5"
+                className="w-full text-xs gap-1.5 shadow-xs"
               >
                 <Send className="h-3 w-3" />
                 <span>Post Comment</span>
               </Button>
             </div>
 
-            {/* Comments List */}
             <div className="space-y-2.5 pt-2">
               {(docData?.comments || []).length === 0 ? (
-                <p className="text-zinc-500 text-center py-4 italic">
-                  No comments on this document yet.
-                </p>
+                <div className="p-4 text-center border border-dashed border-border rounded-xl">
+                  <p className="text-[11px] text-foreground-muted">No comments yet</p>
+                </div>
               ) : (
                 docData.comments.map((c: any) => (
                   <div
                     key={c.id}
-                    className={`p-2.5 rounded-lg border space-y-1.5 transition-colors ${
-                      c.isResolved
-                        ? 'border-zinc-800/40 bg-zinc-950/40 opacity-70'
-                        : 'border-zinc-800 bg-zinc-900/60'
+                    className={`p-3 rounded-xl border transition-colors ${
+                      c.isResolved ? 'border-border bg-background-secondary/60 opacity-60' : 'border-border bg-card'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-zinc-300">{c.user.name}</span>
-                      <span className="text-[10px] text-zinc-500">
-                        {new Date(c.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-zinc-200 text-[11px]">{c.content}</p>
-
-                    {/* Replies */}
-                    {(c.replies || []).length > 0 && (
-                      <div className="pl-3 border-l-2 border-zinc-800 space-y-1 my-1">
-                        {c.replies.map((r: any) => (
-                          <div key={r.id} className="text-[10px]">
-                            <span className="font-medium text-zinc-300">{r.user.name}: </span>
-                            <span className="text-zinc-400">{r.content}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="pt-1 flex items-center justify-end">
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="font-semibold text-foreground text-[11px]">{c.author.name}</span>
                       <button
                         onClick={() =>
                           resolveCommentMutation.mutate({
@@ -433,12 +443,18 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
                             isResolved: !c.isResolved
                           })
                         }
-                        className="text-[10px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1"
+                        className={`text-[10px] flex items-center gap-1 font-medium ${
+                          c.isResolved ? 'text-success' : 'text-foreground-muted hover:text-foreground'
+                        }`}
                       >
                         <Check className="h-3 w-3" />
-                        <span>{c.isResolved ? 'Reopen' : 'Resolve'}</span>
+                        <span>{c.isResolved ? 'Resolved' : 'Resolve'}</span>
                       </button>
                     </div>
+                    <p className="text-foreground-secondary text-xs leading-relaxed">{c.content}</p>
+                    <span className="text-[10px] text-foreground-muted mt-2 block">
+                      {new Date(c.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 ))
               )}
@@ -449,9 +465,12 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
         {/* Tab 4: Review Workflow */}
         {activeRightTab === 'review' && (
           <div className="space-y-4">
-            <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-900/40 space-y-2">
-              <span className="font-semibold text-zinc-200">Review Status</span>
-              <div>
+            <div className="p-3 rounded-xl border border-border bg-card space-y-2 shadow-xs">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">
+                Current Approval State
+              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Status:</span>
                 <Badge
                   variant={
                     status === 'APPROVED' || status === 'COMPLETED'
@@ -467,8 +486,8 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
             </div>
 
             {/* Request Review Box */}
-            <div className="space-y-2 border-t border-zinc-800/60 pt-3">
-              <span className="text-[11px] font-medium text-zinc-300">
+            <div className="space-y-2 border-t border-border pt-3">
+              <span className="text-[11px] font-medium text-foreground">
                 Request Architecture Review
               </span>
               <textarea
@@ -476,14 +495,14 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
                 onChange={(e) => setReviewNotes(e.target.value)}
                 placeholder="Notes for the reviewer (e.g., changes to data schema)..."
                 rows={2}
-                className="w-full p-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full p-2 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
               />
               <Button
                 size="sm"
                 variant="primary"
                 onClick={() => requestReviewMutation.mutate(reviewNotes)}
                 isLoading={requestReviewMutation.isPending}
-                className="w-full text-xs"
+                className="w-full text-xs shadow-xs"
               >
                 Submit Review Request
               </Button>
@@ -491,22 +510,22 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
 
             {/* Active Review Requests */}
             {(docData?.reviewRequests || []).length > 0 && (
-              <div className="space-y-2 border-t border-zinc-800/60 pt-3">
-                <span className="text-[11px] font-medium text-zinc-300">
+              <div className="space-y-2 border-t border-border pt-3">
+                <span className="text-[11px] font-medium text-foreground">
                   Review Approvals & Sign-offs
                 </span>
                 {docData.reviewRequests.map((rr: any) => (
                   <div
                     key={rr.id}
-                    className="p-3 rounded-lg border border-zinc-800 bg-zinc-900 space-y-2"
+                    className="p-3 rounded-xl border border-border bg-card space-y-2 shadow-xs"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-zinc-300 font-medium">
+                      <span className="text-foreground font-medium">
                         Requested by {rr.requester.name}
                       </span>
                       <Badge variant="warning">{rr.status}</Badge>
                     </div>
-                    {rr.notes && <p className="text-zinc-400 text-[11px]">{rr.notes}</p>}
+                    {rr.notes && <p className="text-foreground-secondary text-[11px]">{rr.notes}</p>}
 
                     {/* Quick sign-off buttons for Admin/Owner */}
                     {rr.status === 'PENDING' && (
@@ -521,7 +540,7 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
                               comment: 'Approved for production blueprint'
                             })
                           }
-                          className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-500 gap-1"
+                          className="flex-1 text-xs gap-1"
                         >
                           <FileCheck className="h-3 w-3" /> Approve
                         </Button>
@@ -548,6 +567,49 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
           </div>
         )}
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {isMobileInspectorOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-in fade-in"
+          onClick={() => setMobileInspectorOpen(false)}
+        />
+      )}
+
+      {/* Mobile Slide-Over Drawer */}
+      <aside
+        className={`fixed inset-y-0 right-0 w-[300px] sm:w-[340px] bg-background border-l border-border z-50 flex flex-col shadow-2xl transition-transform duration-300 md:hidden ${
+          isMobileInspectorOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {panelContent}
+      </aside>
+
+      {/* Desktop Resizable Right Panel (when not collapsed) */}
+      {!isInspectorCollapsed && (
+        <>
+          <ResizeHandle
+            onResize={handleResize}
+            onReset={resetInspectorWidth}
+            min={280}
+            max={440}
+            current={inspectorWidth}
+            ariaLabel="Resize Inspector Panel"
+            side="left"
+            className="hidden md:flex"
+          />
+          <aside
+            style={{ width: `${inspectorWidth}px` }}
+            className="border-l border-border bg-background hidden md:flex flex-col h-full text-xs select-none shrink-0 overflow-hidden transition-[width] duration-75 relative min-w-0"
+          >
+            {panelContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 }
