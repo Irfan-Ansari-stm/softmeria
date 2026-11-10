@@ -9,7 +9,8 @@ export class TemplateService {
     const where: any = {
       OR: [
         { isBuiltin: true },
-        ...(query.workspaceId ? [{ workspaceId: query.workspaceId }] : [])
+        { workspaceId: null },
+        ...(query.workspaceId ? [{ workspaceId: query.workspaceId }] : [{ isBuiltin: false }])
       ]
     };
 
@@ -109,14 +110,59 @@ export class TemplateService {
         slug,
         category: data.category,
         description: data.description,
-        purpose: data.purpose,
-        recommendedSections: JSON.stringify(data.recommendedSections),
-        content: data.content,
+        purpose: data.purpose || data.description || 'Architecture specification',
+        recommendedSections: JSON.stringify(data.recommendedSections || []),
+        content: data.content || '',
         isBuiltin: false
       }
     });
 
     return template;
+  }
+
+  async updateTemplate(id: string, data: any) {
+    const existing = await prisma.template.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Template not found');
+
+    const updateData: any = { ...data };
+    if (data.recommendedSections && Array.isArray(data.recommendedSections)) {
+      updateData.recommendedSections = JSON.stringify(data.recommendedSections);
+    }
+    if (data.title) {
+      updateData.slug = slugify(data.title);
+    }
+
+    return prisma.template.update({
+      where: { id },
+      data: updateData
+    });
+  }
+
+  async deleteTemplate(id: string) {
+    const existing = await prisma.template.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Template not found');
+
+    await prisma.template.delete({ where: { id } });
+    return { message: 'Template deleted successfully' };
+  }
+
+  async duplicateTemplate(userId: string, id: string) {
+    const existing = await this.getTemplate(id);
+
+    return prisma.template.create({
+      data: {
+        workspaceId: existing.workspaceId,
+        createdById: userId,
+        title: `${existing.title} (Copy)`,
+        slug: slugify(`${existing.title}-copy-${Date.now().toString().slice(-4)}`),
+        category: existing.category,
+        description: existing.description,
+        purpose: existing.purpose,
+        recommendedSections: JSON.stringify(existing.recommendedSections),
+        content: existing.content,
+        isBuiltin: false
+      }
+    });
   }
 
   async applyTemplate(

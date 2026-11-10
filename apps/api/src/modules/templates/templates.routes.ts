@@ -17,9 +17,20 @@ router.get('/:templateId', (req, res, next) =>
   templateController.getTemplate(req, res, next)
 );
 
+router.put('/:templateId', (req, res, next) =>
+  templateController.updateTemplate(req, res, next)
+);
+
+router.delete('/:templateId', (req, res, next) =>
+  templateController.deleteTemplate(req, res, next)
+);
+
+router.post('/:templateId/duplicate', (req, res, next) =>
+  templateController.duplicateTemplate(req, res, next)
+);
+
 router.post('/:templateId/apply', validate(applyTemplateSchema), (req, res, next) =>
   templateController.applyTemplate(req, res, next)
 );
 
 export const templateRoutes = router;
-

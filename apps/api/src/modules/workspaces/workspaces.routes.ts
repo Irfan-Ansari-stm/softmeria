@@ -37,6 +37,52 @@ router.get('/:workspaceId/members', requireWorkspaceRole('VIEWER'), (req, res, n
   workspaceController.listMembers(req, res, next)
 );
 
+router.patch('/:workspaceId/members/:memberId/status', requireWorkspaceRole('ADMIN'), (req, res, next) =>
+  workspaceController.updateMemberStatus(req, res, next)
+);
+
+router.get('/:workspaceId/team-stats', requireWorkspaceRole('VIEWER'), (req, res, next) =>
+  workspaceController.getTeamStats(req, res, next)
+);
+router.get('/:workspaceId/team/stats', requireWorkspaceRole('VIEWER'), (req, res, next) =>
+  workspaceController.getTeamStats(req, res, next)
+);
+
+// Invitations
+router.get('/:workspaceId/invitations', requireWorkspaceRole('ADMIN'), (req, res, next) =>
+  workspaceController.listInvitations(req, res, next)
+);
+router.delete('/:workspaceId/invitations/:invitationId', requireWorkspaceRole('ADMIN'), (req, res, next) =>
+  workspaceController.cancelInvitation(req, res, next)
+);
+router.post('/:workspaceId/invitations/:invitationId/resend', requireWorkspaceRole('ADMIN'), (req, res, next) =>
+  workspaceController.resendInvitation(req, res, next)
+);
+router.post('/invitations/accept', (req, res, next) =>
+  workspaceController.acceptInvitation(req, res, next)
+);
+
+// Project Members
+router.get('/projects/:projectId/members', (req, res, next) =>
+  workspaceController.listProjectMembers(req, res, next)
+);
+router.post('/projects/:projectId/members', (req, res, next) =>
+  workspaceController.assignProjectMember(req, res, next)
+);
+router.delete('/projects/:projectId/members/:userId', (req, res, next) =>
+  workspaceController.removeProjectMember(req, res, next)
+);
+
+router.get('/:workspaceId/projects/:projectId/members', (req, res, next) =>
+  workspaceController.listProjectMembers(req, res, next)
+);
+router.post('/:workspaceId/projects/:projectId/members', (req, res, next) =>
+  workspaceController.assignProjectMember(req, res, next)
+);
+router.delete('/:workspaceId/projects/:projectId/members/:userId', (req, res, next) =>
+  workspaceController.removeProjectMember(req, res, next)
+);
+
 router.post(
   '/:workspaceId/members',
   requireWorkspaceRole('ADMIN'),

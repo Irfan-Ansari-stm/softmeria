@@ -34,6 +34,34 @@ export class TemplateController {
     }
   }
 
+  async updateTemplate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const template = await templateService.updateTemplate(req.params.templateId || req.params.id, req.body);
+      return sendSuccess(res, template, 'Template updated');
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async deleteTemplate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await templateService.deleteTemplate(req.params.templateId || req.params.id);
+      return sendSuccess(res, result, 'Template deleted');
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async duplicateTemplate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const copy = await templateService.duplicateTemplate(userId, req.params.templateId || req.params.id);
+      return sendSuccess(res, copy, 'Template duplicated', 201);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async applyTemplate(req: Request, res: Response, next: NextFunction) {
     try {
       const doc = await templateService.applyTemplate(

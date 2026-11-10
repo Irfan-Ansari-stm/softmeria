@@ -14,7 +14,7 @@ import {
   Info
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/useEditorStore';
-import { useLayoutStore } from '../../stores/useLayoutStore';
+import { useLayoutStore, MIN_PANE_PIXEL_WIDTH } from '../../stores/useLayoutStore';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { MarkdownPreview } from './MarkdownPreview';
 import { ContextualRightPanel } from './ContextualRightPanel';
@@ -58,7 +58,10 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
     toggleInspectorCollapsed,
     setInspectorCollapsed,
     isMobileInspectorOpen,
-    setMobileInspectorOpen
+    setMobileInspectorOpen,
+    isResizing,
+    setIsResizing,
+    commitLayout
   } = useLayoutStore();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -229,14 +232,71 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
   const chars = content.length;
   const lines = content.split('\n').length;
 
-  // Split resize handler
-  const handleSplitResize = (deltaX: number) => {
-    if (!splitContainerRef.current) return;
+  // Calculate dynamic ratio bounds based on parent container width and 320px minimum per pane
+  const calculateRatioBounds = useCallback(() => {
+    if (!splitContainerRef.current) return { minRatio: 20, maxRatio: 80 };
     const totalWidth = splitContainerRef.current.offsetWidth;
-    if (totalWidth <= 0) return;
-    const deltaPercent = (deltaX / totalWidth) * 100;
-    setEditorSplitRatio(editorSplitRatio + deltaPercent);
-  };
+    if (totalWidth <= 0) return { minRatio: 20, maxRatio: 80 };
+
+    // Minimum width of 320px for both editor and preview
+    const minRatio = Math.max(20, (MIN_PANE_PIXEL_WIDTH / totalWidth) * 100);
+    const maxRatio = Math.min(80, ((totalWidth - MIN_PANE_PIXEL_WIDTH) / totalWidth) * 100);
+
+    if (minRatio >= maxRatio) {
+      return { minRatio: 50, maxRatio: 50 };
+    }
+    return { minRatio, maxRatio };
+  }, []);
+
+  // Split resize handler with pixel boundary enforcement and non-blocking updates during drag
+  const handleSplitResize = useCallback(
+    (deltaX: number) => {
+      if (!splitContainerRef.current) return;
+      const totalWidth = splitContainerRef.current.offsetWidth;
+      if (totalWidth <= 0) return;
+
+      const { minRatio, maxRatio } = calculateRatioBounds();
+      const deltaPercent = (deltaX / totalWidth) * 100;
+      const currentRatio = useLayoutStore.getState().editorSplitRatio;
+      const newRatio = Math.max(minRatio, Math.min(maxRatio, currentRatio + deltaPercent));
+      setEditorSplitRatio(newRatio, false);
+    },
+    [calculateRatioBounds, setEditorSplitRatio]
+  );
+
+  const handleSplitStep = useCallback(
+    (deltaStep: number) => {
+      if (!splitContainerRef.current) return;
+      const totalWidth = splitContainerRef.current.offsetWidth;
+      if (totalWidth <= 0) return;
+
+      const { minRatio, maxRatio } = calculateRatioBounds();
+      const deltaPercent = (deltaStep / totalWidth) * 100;
+      const currentRatio = useLayoutStore.getState().editorSplitRatio;
+      const newRatio = Math.max(minRatio, Math.min(maxRatio, currentRatio + deltaPercent));
+      setEditorSplitRatio(newRatio, true);
+    },
+    [calculateRatioBounds, setEditorSplitRatio]
+  );
+
+  // Monitor workspace width: if available width becomes too small for both panes + inspector, auto-collapse inspector
+  useEffect(() => {
+    const splitContainer = splitContainerRef.current;
+    if (!splitContainer) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        // If workspace is less than 680px and in split mode, auto-collapse inspector to prevent compressing panes
+        if (width > 0 && width < 680 && !isInspectorCollapsed) {
+          setInspectorCollapsed(true);
+        }
+      }
+    });
+
+    observer.observe(splitContainer);
+    return () => observer.disconnect();
+  }, [isInspectorCollapsed, setInspectorCollapsed]);
 
   return (
     <div
@@ -416,32 +476,21 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
           )}
         </div>
 
-        {/* DESKTOP CSS GRID (>=768px): [Editor/Preview Area] + [Inspector] */}
-        <div
-          className={`hidden md:grid h-full w-full min-w-0 overflow-hidden transition-all duration-75 ${
-            isInspectorCollapsed
-              ? 'grid-cols-[minmax(0,1fr)]'
-              : `grid-cols-[minmax(0,1fr)_auto_${inspectorWidth}px]`
-          }`}
-        >
+        {/* DESKTOP (>=768px): [Editor/Preview Area] + [Inspector] */}
+        <div className="hidden md:flex flex-row h-full w-full min-w-0 overflow-hidden">
           {/* Column 1: Editor & Preview Split Workspace */}
           <div
             ref={splitContainerRef}
-            className={`h-full w-full min-w-0 overflow-hidden ${
-              viewMode === 'split'
-                ? 'grid'
-                : 'flex'
-            }`}
-            style={{
-              gridTemplateColumns:
-                viewMode === 'split'
-                  ? `minmax(320px, ${editorSplitRatio}fr) auto minmax(320px, ${100 - editorSplitRatio}fr)`
-                  : undefined
-            }}
+            className="flex-1 flex flex-row h-full min-w-0 overflow-hidden"
           >
             {/* Editor Pane (in split or edit-only mode) */}
             {(viewMode === 'split' || viewMode === 'edit') && (
-              <div className="flex flex-col h-full w-full min-w-0 bg-background overflow-hidden flex-1">
+              <div
+                style={{
+                  width: viewMode === 'split' ? `${editorSplitRatio}%` : '100%'
+                }}
+                className="flex flex-col h-full min-w-0 bg-background overflow-hidden shrink-0"
+              >
                 <div className="flex-1 relative flex h-full min-w-0 overflow-hidden">
                   {/* Line Numbers Gutter */}
                   <div
@@ -474,9 +523,15 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
               <ResizeHandle
                 onResize={handleSplitResize}
                 onReset={resetEditorSplitRatio}
-                min={20}
-                max={80}
-                current={editorSplitRatio}
+                onStepChange={handleSplitStep}
+                onDragStart={() => setIsResizing(true)}
+                onDragEnd={() => {
+                  setIsResizing(false);
+                  commitLayout();
+                }}
+                min={Math.round(calculateRatioBounds().minRatio)}
+                max={Math.round(calculateRatioBounds().maxRatio)}
+                current={Math.round(editorSplitRatio)}
                 ariaLabel="Resize Editor and Preview Divider"
                 className="flex shrink-0"
               />
@@ -484,7 +539,12 @@ export function MarkdownWorkspace({ documentId }: MarkdownWorkspaceProps) {
 
             {/* Live Preview Pane (in split or preview-only mode) */}
             {(viewMode === 'split' || viewMode === 'preview') && (
-              <div className="h-full w-full min-w-0 overflow-hidden bg-background flex-1 border-l border-border/40">
+              <div
+                style={{
+                  width: viewMode === 'split' ? `${100 - editorSplitRatio}%` : '100%'
+                }}
+                className="h-full min-w-0 overflow-hidden bg-background flex-1 border-l border-border/40"
+              >
                 <MarkdownPreview content={content} />
               </div>
             )}

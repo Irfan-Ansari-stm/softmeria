@@ -42,6 +42,48 @@ export default function DashboardLayout({
   const breadcrumbs: Array<{ label: string; href?: string }> = [];
   if (pathname.includes('/projects')) {
     breadcrumbs.push({ label: 'Projects', href: '/projects' });
+  } else if (pathname.includes('/inbox')) {
+    breadcrumbs.push({ label: 'Inbox', href: '/inbox' });
+  } else if (pathname.includes('/my-tasks')) {
+    breadcrumbs.push({ label: 'My Tasks', href: '/my-tasks' });
+  } else if (pathname.includes('/my-time')) {
+    breadcrumbs.push({ label: 'My Time', href: '/my-time' });
+  } else if (pathname.includes('/boards')) {
+    breadcrumbs.push({ label: 'My Boards', href: '/boards' });
+  } else if (pathname.includes('/backlog')) {
+    breadcrumbs.push({ label: 'Backlog', href: '/backlog' });
+  } else if (pathname.includes('/sprints')) {
+    breadcrumbs.push({ label: 'Sprints', href: '/sprints' });
+  } else if (pathname.includes('/bugs')) {
+    breadcrumbs.push({ label: 'Issues & Bugs', href: '/bugs' });
+  } else if (pathname.includes('/roadmaps')) {
+    breadcrumbs.push({ label: 'Roadmaps', href: '/roadmaps' });
+  } else if (pathname.includes('/milestones')) {
+    breadcrumbs.push({ label: 'Milestones', href: '/milestones' });
+  } else if (pathname.includes('/calendar')) {
+    breadcrumbs.push({ label: 'Calendar', href: '/calendar' });
+  } else if (pathname.includes('/portfolios')) {
+    breadcrumbs.push({ label: 'Portfolios', href: '/portfolios' });
+  } else if (pathname.includes('/testing')) {
+    breadcrumbs.push({ label: 'Testing & QA', href: '/testing' });
+  } else if (pathname.includes('/releases')) {
+    breadcrumbs.push({ label: 'Releases', href: '/releases' });
+  } else if (pathname.includes('/discussions')) {
+    breadcrumbs.push({ label: 'Discussions', href: '/discussions' });
+  } else if (pathname.includes('/reports')) {
+    breadcrumbs.push({ label: 'Reports', href: '/reports' });
+  } else if (pathname.includes('/risks')) {
+    breadcrumbs.push({ label: 'Risks', href: '/risks' });
+  } else if (pathname.includes('/design')) {
+    breadcrumbs.push({ label: 'Design System', href: '/design' });
+  } else if (pathname.includes('/development')) {
+    breadcrumbs.push({ label: 'Development', href: '/development' });
+  } else if (pathname.includes('/files')) {
+    breadcrumbs.push({ label: 'Files', href: '/files' });
+  } else if (pathname.includes('/integrations')) {
+    breadcrumbs.push({ label: 'Integrations', href: '/integrations' });
+  } else if (pathname.includes('/audit-logs')) {
+    breadcrumbs.push({ label: 'Audit Logs', href: '/audit-logs' });
   } else if (pathname.includes('/templates')) {
     breadcrumbs.push({ label: 'Templates', href: '/templates' });
   } else if (pathname.includes('/team')) {
@@ -53,19 +95,21 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="w-full h-[100dvh] overflow-hidden bg-background text-foreground transition-colors grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)]">
-      {/* Mobile Drawer Left Sidebar (Only mounted on Mobile screens) */}
-      <div className="md:hidden">
-        <AppSidebar isMobileDrawer activeProjectId={activeProjectId} />
-      </div>
+    <div className="w-full h-[100dvh] overflow-hidden bg-background text-foreground transition-colors flex">
+      {/* Mobile Drawer Left Sidebar */}
+      <AppSidebar isMobileDrawer activeProjectId={activeProjectId} />
 
-      {/* Desktop Left Sidebar (Occupies Column 1 on desktop) */}
+      {/* Desktop Left Sidebar + Resize Handle */}
       <AppSidebar activeProjectId={activeProjectId} />
 
-      {/* Main Application Area (Occupies Column 2 on desktop: Top Nav + Viewport Workspace) */}
-      <div className="grid grid-rows-[auto_minmax(0,1fr)] h-full w-full min-w-0 overflow-hidden bg-background">
+      {/* Main Application Area (Flexible Viewport: Top Nav + Content) */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-background">
         <AppHeader breadcrumbs={breadcrumbs} />
-        <main className="h-full w-full min-w-0 min-h-0 overflow-y-auto bg-background-secondary/60 transition-colors">
+        <main
+          className={`flex-1 w-full min-w-0 min-h-0 ${
+            pathname.includes('/docs/') ? 'overflow-hidden' : 'overflow-y-auto'
+          } bg-background-secondary/60 transition-colors`}
+        >
           {children}
         </main>
       </div>

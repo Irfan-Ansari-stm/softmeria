@@ -187,23 +187,66 @@ export class AuthService {
     return user;
   }
 
-  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string | null }) {
+  async updateProfile(userId: string, data: {
+    name?: string;
+    avatarUrl?: string | null;
+    jobTitle?: string;
+    department?: string;
+    bio?: string;
+    timezone?: string;
+    preferredLanguage?: string;
+    twoFactorEnabled?: boolean;
+  }) {
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+    if (data.jobTitle !== undefined) updateData.jobTitle = data.jobTitle;
+    if (data.department !== undefined) updateData.department = data.department;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.timezone !== undefined) updateData.timezone = data.timezone;
+    if (data.preferredLanguage !== undefined) updateData.preferredLanguage = data.preferredLanguage;
+    if (data.twoFactorEnabled !== undefined) updateData.twoFactorEnabled = data.twoFactorEnabled;
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(data.name ? { name: data.name } : {}),
-        ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {})
-      },
+      data: updateData,
       select: {
         id: true,
         name: true,
         email: true,
         avatarUrl: true,
+        jobTitle: true,
+        department: true,
+        bio: true,
+        timezone: true,
+        preferredLanguage: true,
+        twoFactorEnabled: true,
         createdAt: true
       }
     });
 
     return user;
+  }
+
+  async listSessions(userId: string) {
+    return prisma.session.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: {
+        id: true,
+        userAgent: true,
+        ipAddress: true,
+        createdAt: true,
+        expiresAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    return prisma.session.updateMany({
+      where: { id: sessionId, userId },
+      data: { revokedAt: new Date() }
+    });
   }
 
   async changePassword(userId: string, data: { currentPassword: string; newPassword: string }) {

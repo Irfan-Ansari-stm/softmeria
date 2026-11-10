@@ -15,7 +15,19 @@ export const updateWorkspaceSchema = z.object({
     logoUrl: z.string().url().nullable().optional(),
     themePreference: z.enum(['light', 'dark', 'system']).optional(),
     notifyOnComment: z.boolean().optional(),
-    notifyOnReview: z.boolean().optional()
+    notifyOnReview: z.boolean().optional(),
+    companyName: z.string().optional(),
+    website: z.string().optional(),
+    industry: z.string().optional(),
+    timezone: z.string().optional(),
+    defaultVisibility: z.string().optional(),
+    emailNotifications: z.boolean().optional(),
+    inAppNotifications: z.boolean().optional(),
+    projectUpdates: z.boolean().optional(),
+    taskAssignments: z.boolean().optional(),
+    bugAlerts: z.boolean().optional(),
+    releaseApprovals: z.boolean().optional(),
+    securityAlerts: z.boolean().optional()
   })
 });
 

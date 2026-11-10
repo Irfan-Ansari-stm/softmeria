@@ -12,6 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:demo": "tsx prisma/seeds/index.ts",
+    "db:seed:verify": "tsx prisma/seeds/verify.ts",
     "db:studio": "prisma studio",
     "test": "pnpm --filter @devblueprint/api test && pnpm --filter @devblueprint/web test",
     "lint": "pnpm --filter @devblueprint/* lint"

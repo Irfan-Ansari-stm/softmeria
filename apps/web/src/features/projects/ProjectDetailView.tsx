@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FolderKanban,
   Download,
@@ -12,7 +12,22 @@ import {
   Upload,
   FolderOpen,
   GitBranch,
-  ExternalLink
+  ExternalLink,
+  LayoutDashboard,
+  Kanban,
+  CheckSquare,
+  Flame,
+  Target,
+  Bug,
+  ShieldCheck,
+  Rocket,
+  Users,
+  Clock,
+  ShieldAlert,
+  MessageSquare,
+  BarChart3,
+  Palette,
+  Code2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -25,13 +40,40 @@ import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { ImportModal } from '../imports-exports/ImportModal';
 
+// SDLC Module Sub-views
+import { ProjectOverviewView } from '../overview/ProjectOverviewView';
+import { KanbanBoardView } from '../board/KanbanBoardView';
+import { TasksTableView } from '../tasks/TasksTableView';
+import { SprintsView } from '../sprints/SprintsView';
+import { RoadmapView } from '../roadmap/RoadmapView';
+import { BugsView } from '../bugs/BugsView';
+import { TestingView } from '../testing/TestingView';
+import { ReleasesView } from '../releases/ReleasesView';
+import { DesignSystemView } from '../design/DesignSystemView';
+import { DevelopmentView } from '../development/DevelopmentView';
+import { ProjectTeamView } from '../team/ProjectTeamView';
+import { TimeTrackingView } from '../time/TimeTrackingView';
+import { RisksView } from '../risks/RisksView';
+import { DiscussionsView } from '../discussions/DiscussionsView';
+import { ProjectReportsView } from '../reports/ProjectReportsView';
+
 interface ProjectDetailViewProps {
   projectId: string;
 }
 
 export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  const urlTab = searchParams?.get('tab');
+  const [activeTab, setActiveTab] = useState<string>(urlTab || 'overview');
+
+  React.useEffect(() => {
+    if (urlTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
 
   const [isAddCatOpen, setIsAddCatOpen] = useState(false);
   const [isAddDocOpen, setIsAddDocOpen] = useState(false);
@@ -163,8 +205,27 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     );
   }
 
+  const tabsList = [
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="h-3.5 w-3.5" /> },
+    { id: 'board', label: 'Board', icon: <Kanban className="h-3.5 w-3.5" /> },
+    { id: 'tasks', label: 'Tasks', icon: <CheckSquare className="h-3.5 w-3.5" /> },
+    { id: 'sprints', label: 'Sprints', icon: <Flame className="h-3.5 w-3.5" /> },
+    { id: 'roadmap', label: 'Roadmap', icon: <Target className="h-3.5 w-3.5" /> },
+    { id: 'docs', label: 'Documentation', icon: <FileText className="h-3.5 w-3.5" /> },
+    { id: 'design', label: 'Design System', icon: <Palette className="h-3.5 w-3.5" /> },
+    { id: 'development', label: 'Development & Repos', icon: <Code2 className="h-3.5 w-3.5" /> },
+    { id: 'bugs', label: 'Bugs & QA', icon: <Bug className="h-3.5 w-3.5" /> },
+    { id: 'testing', label: 'Testing', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+    { id: 'releases', label: 'Releases', icon: <Rocket className="h-3.5 w-3.5" /> },
+    { id: 'team', label: 'Teams', icon: <Users className="h-3.5 w-3.5" /> },
+    { id: 'time', label: 'Time Tracking', icon: <Clock className="h-3.5 w-3.5" /> },
+    { id: 'risks', label: 'Risks', icon: <ShieldAlert className="h-3.5 w-3.5" /> },
+    { id: 'discussions', label: 'Discussions', icon: <MessageSquare className="h-3.5 w-3.5" /> },
+    { id: 'reports', label: 'Reports', icon: <BarChart3 className="h-3.5 w-3.5" /> },
+  ];
+
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="w-full p-6 lg:p-8 space-y-6 min-w-0">
       {/* Project Header Banner */}
       <div className="p-6 rounded-xl border border-border bg-card space-y-5 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -255,150 +316,238 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
         </div>
       </div>
 
-      {/* Progress Metric & Category Overview */}
-      <Card>
-        <CardContent className="p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Documentation Blueprint Progress
-              </h3>
-              <p className="text-xs text-foreground-muted mt-0.5">
-                Calculated across required non-optional engineering specifications.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xl font-bold font-mono text-foreground">
-                {project.completionPercentage}%
-              </span>
-              <span className="text-xs text-foreground-muted">
-                ({project.completedDocuments} / {project.totalDocuments} completed)
-              </span>
-            </div>
-          </div>
-          <Progress value={project.completionPercentage} size="md" />
-        </CardContent>
-      </Card>
-
-      {/* Categories & Documents List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <FolderOpen className="h-4.5 w-4.5 text-amber-500" />
-            <span>Documentation Categories & Blueprint Specifications</span>
-          </h2>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddCatOpen(true)}
-              className="text-xs gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Category</span>
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setTargetCategoryId(categories[0]?.id || '');
-                setIsAddDocOpen(true);
-              }}
-              className="text-xs gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Document</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Categories Stack */}
-        <div className="space-y-4">
-          {categories.map((cat: any) => (
-            <Card key={cat.id} className="overflow-hidden border-border bg-card">
-              <CardHeader className="p-4 bg-background-secondary border-b border-border flex flex-row items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground">
-                      {cat.name}
-                    </span>
-                    <span className="font-mono text-[10px] text-foreground-muted px-1.5 py-0.5 rounded bg-background border border-border">
-                      {cat.slug}
-                    </span>
-                  </div>
-                  {cat.description && (
-                    <p className="text-xs text-foreground-muted">{cat.description}</p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-foreground font-mono">
-                      {cat.completionPercentage}%
-                    </span>
-                    <span className="text-[10px] text-foreground-muted block">
-                      {cat.completedCount} / {cat.documentCount} Done
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setTargetCategoryId(cat.id);
-                      setIsAddDocOpen(true);
-                    }}
-                    className="text-xs p-1 h-7"
-                    title="Add document to category"
-                  >
-                    <Plus className="h-3.5 w-3.5 text-foreground-muted hover:text-foreground" />
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-0 divide-y divide-border">
-                {(cat.documents || []).length === 0 ? (
-                  <div className="p-4 text-center text-xs text-foreground-muted italic">
-                    No documents in this category yet.
-                  </div>
-                ) : (
-                  cat.documents.map((doc: any) => (
-                    <Link
-                      key={doc.id}
-                      href={`/projects/${projectId}/docs/${doc.id}`}
-                      className="p-3.5 flex items-center justify-between hover:bg-background-secondary transition-colors group block"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="h-4 w-4 text-primary shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">
-                            {doc.title}
-                          </p>
-                          <p className="text-[11px] text-foreground-muted font-mono truncate">
-                            {doc.fileName}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        {doc.isOptional && (
-                          <Badge variant="outline" className="text-[10px] text-foreground-muted">
-                            Optional
-                          </Badge>
-                        )}
-                        {getStatusBadge(doc.status)}
-                        <span className="text-xs text-foreground-muted font-mono">
-                          v{doc.versionNumber}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          ))}
+      {/* SDLC Navigation Tab Bar */}
+      <div className="border-b border-border overflow-x-auto scrollbar-thin">
+        <div className="flex items-center space-x-1 min-w-max pb-px text-sm">
+          {tabsList.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2.5 font-medium text-xs rounded-t-lg transition-all border-b-2 ${
+                  isActive
+                    ? 'border-primary text-primary bg-primary/10'
+                    : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-background-secondary'
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Tab Panels */}
+      {activeTab === 'overview' && (
+        <ProjectOverviewView projectId={projectId} onNavigateTab={setActiveTab} />
+      )}
+
+      {activeTab === 'board' && (
+        <KanbanBoardView projectId={projectId} />
+      )}
+
+      {activeTab === 'tasks' && (
+        <TasksTableView projectId={projectId} />
+      )}
+
+      {activeTab === 'sprints' && (
+        <SprintsView projectId={projectId} />
+      )}
+
+      {activeTab === 'roadmap' && (
+        <RoadmapView projectId={projectId} />
+      )}
+
+      {activeTab === 'design' && (
+        <DesignSystemView projectId={projectId} />
+      )}
+
+      {activeTab === 'development' && (
+        <DevelopmentView projectId={projectId} />
+      )}
+
+      {activeTab === 'bugs' && (
+        <BugsView projectId={projectId} />
+      )}
+
+      {activeTab === 'testing' && (
+        <TestingView projectId={projectId} />
+      )}
+
+      {activeTab === 'releases' && (
+        <ReleasesView projectId={projectId} />
+      )}
+
+      {activeTab === 'team' && (
+        <ProjectTeamView projectId={projectId} />
+      )}
+
+      {activeTab === 'time' && (
+        <TimeTrackingView projectId={projectId} />
+      )}
+
+      {activeTab === 'risks' && (
+        <RisksView projectId={projectId} />
+      )}
+
+      {activeTab === 'discussions' && (
+        <DiscussionsView projectId={projectId} />
+      )}
+
+      {activeTab === 'reports' && (
+        <ProjectReportsView projectId={projectId} />
+      )}
+
+      {activeTab === 'docs' && (
+        <div className="space-y-6">
+          {/* Progress Metric & Category Overview */}
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Documentation Blueprint Progress
+                  </h3>
+                  <p className="text-xs text-foreground-muted mt-0.5">
+                    Calculated across required non-optional engineering specifications.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xl font-bold font-mono text-foreground">
+                    {project.completionPercentage}%
+                  </span>
+                  <span className="text-xs text-foreground-muted">
+                    ({project.completedDocuments} / {project.totalDocuments} completed)
+                  </span>
+                </div>
+              </div>
+              <Progress value={project.completionPercentage} size="md" />
+            </CardContent>
+          </Card>
+
+          {/* Categories & Documents List */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <FolderOpen className="h-4.5 w-4.5 text-amber-500" />
+                <span>Documentation Categories & Blueprint Specifications</span>
+              </h2>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddCatOpen(true)}
+                  className="text-xs gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>New Category</span>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setTargetCategoryId(categories[0]?.id || '');
+                    setIsAddDocOpen(true);
+                  }}
+                  className="text-xs gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>New Document</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Categories Stack */}
+            <div className="space-y-4">
+              {categories.map((cat: any) => (
+                <Card key={cat.id} className="overflow-hidden border-border bg-card">
+                  <CardHeader className="p-4 bg-background-secondary border-b border-border flex flex-row items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-foreground">
+                          {cat.name}
+                        </span>
+                        <span className="font-mono text-[10px] text-foreground-muted px-1.5 py-0.5 rounded bg-background border border-border">
+                          {cat.slug}
+                        </span>
+                      </div>
+                      {cat.description && (
+                        <p className="text-xs text-foreground-muted">{cat.description}</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-xs font-semibold text-foreground font-mono">
+                          {cat.completionPercentage}%
+                        </span>
+                        <span className="text-[10px] text-foreground-muted block">
+                          {cat.completedCount} / {cat.documentCount} Done
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setTargetCategoryId(cat.id);
+                          setIsAddDocOpen(true);
+                        }}
+                        className="text-xs p-1 h-7"
+                        title="Add document to category"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-foreground-muted hover:text-foreground" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-0 divide-y divide-border">
+                    {(cat.documents || []).length === 0 ? (
+                      <div className="p-4 text-center text-xs text-foreground-muted italic">
+                        No documents in this category yet.
+                      </div>
+                    ) : (
+                      cat.documents.map((doc: any) => (
+                        <Link
+                          key={doc.id}
+                          href={`/projects/${projectId}/docs/${doc.id}`}
+                          className="p-3.5 flex items-center justify-between hover:bg-background-secondary transition-colors group block"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="h-4 w-4 text-primary shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                                {doc.title}
+                              </p>
+                              <p className="text-[11px] text-foreground-muted font-mono truncate">
+                                {doc.fileName}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            {doc.isOptional && (
+                              <Badge variant="outline" className="text-[10px] text-foreground-muted">
+                                Optional
+                              </Badge>
+                            )}
+                            {getStatusBadge(doc.status)}
+                            <span className="text-xs text-foreground-muted font-mono">
+                              v{doc.versionNumber}
+                            </span>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Category Dialog */}
       <Dialog

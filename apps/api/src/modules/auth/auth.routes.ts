@@ -39,5 +39,13 @@ router.put('/change-password', authenticate, validate(changePasswordSchema), (re
   authController.changePassword(req, res, next)
 );
 
+router.get('/sessions', authenticate, (req, res, next) =>
+  authController.listSessions(req, res, next)
+);
+
+router.delete('/sessions/:sessionId', authenticate, (req, res, next) =>
+  authController.revokeSession(req, res, next)
+);
+
 export const authRoutes = router;
 

@@ -66,8 +66,10 @@ export class ImportExportService {
 
     // 2. Add files per category
     for (const cat of project.categories) {
-      const folderName = sanitizeFileName(cat.slug || slugify(cat.name));
-      indexContent += `### ${cat.name} (\`./${folderName}/\`)\n`;
+      const isRoot = cat.slug === 'root';
+      const folderName = isRoot ? '' : sanitizeFileName(cat.slug || slugify(cat.name));
+      const displayPath = isRoot ? './' : `./docs/${folderName}/`;
+      indexContent += `### ${cat.name} (\`${displayPath}\`)\n`;
 
       if (cat.documents.length === 0) {
         indexContent += `*(No documents in this category)*\n\n`;
@@ -75,7 +77,7 @@ export class ImportExportService {
         for (const doc of cat.documents) {
           const rawFileName = doc.fileName || `${slugify(doc.title).toUpperCase().replace(/-/g, '_')}.md`;
           const fileName = rawFileName.endsWith('.md') ? rawFileName : `${rawFileName}.md`;
-          const filePath = `${folderName}/${fileName}`;
+          const filePath = isRoot ? fileName : `docs/${folderName}/${fileName}`;
 
           archive.append(doc.content, { name: filePath });
           indexContent += `- [${doc.title}](./${filePath}) - *Status: ${doc.status}*\n`;
@@ -185,10 +187,23 @@ export class ImportExportService {
       }
 
       const pathParts = safeEntryPath.split(/[\/\\]/);
-      let categoryName = 'Imported Documentation';
+      let categoryName = 'Project Root';
+      let categorySlug = 'root';
 
-      if (pathParts.length > 1) {
-        categoryName = pathParts[0].replace(/^[0-9]+[-_]/, '').replace(/[-_]/g, ' ');
+      if (pathParts.length === 1) {
+        // Root file
+        categoryName = 'Project Root';
+        categorySlug = 'root';
+      } else if (pathParts[0].toLowerCase() === 'docs' && pathParts.length >= 3) {
+        const catFolder = pathParts[1];
+        categorySlug = slugify(catFolder);
+        categoryName = catFolder.replace(/^[0-9]+[-_.]\s*/, '').replace(/[-_]/g, ' ');
+        categoryName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+      } else {
+        const catFolder = pathParts[0];
+        categorySlug = slugify(catFolder);
+        categoryName = catFolder.replace(/^[0-9]+[-_.]\s*/, '').replace(/[-_]/g, ' ');
+        categoryName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
       }
 
       const fileName = path.basename(safeEntryPath);
@@ -196,12 +211,15 @@ export class ImportExportService {
       const content = entry.getData().toString('utf-8');
 
       // Find or create category
-      let categoryId = createdCategories.get(categoryName);
+      let categoryId = createdCategories.get(categorySlug);
       if (!categoryId) {
         let cat = await prisma.category.findFirst({
           where: {
             projectId,
-            name: { equals: categoryName, mode: 'insensitive' }
+            OR: [
+              { slug: categorySlug },
+              { name: { equals: categoryName, mode: 'insensitive' } }
+            ]
           }
         });
 
@@ -210,13 +228,13 @@ export class ImportExportService {
             data: {
               projectId,
               name: categoryName,
-              slug: slugify(categoryName),
+              slug: categorySlug,
               isCustom: true
             }
           });
         }
         categoryId = cat.id;
-        createdCategories.set(categoryName, categoryId);
+        createdCategories.set(categorySlug, categoryId);
       }
 
       const doc = await prisma.document.create({

@@ -15,7 +15,10 @@ export const createProjectSchema = z.object({
     color: z.string().default('#4f46e5'),
     visibility: z.enum(PROJECT_VISIBILITIES).default('PRIVATE'),
     status: z.enum(PROJECT_STATUSES).default('ACTIVE'),
-    initDefaultCategories: z.boolean().default(true)
+    initDefaultCategories: z.boolean().default(true),
+    blueprintOption: z.enum(['FULL', 'MINIMAL', 'BLANK', 'CUSTOM']).optional(),
+    selectedCategories: z.array(z.string()).optional(),
+    selectedDocumentIds: z.array(z.string()).optional()
   })
 });
 

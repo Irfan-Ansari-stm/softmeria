@@ -1,7 +1,9 @@
 import { prisma } from '../../config/db';
 import { NotFoundError, ConflictError } from '../../utils/errors';
-import { slugify, DEFAULT_BLUEPRINT_CATEGORIES } from '@devblueprint/shared';
+import { slugify } from '@devblueprint/shared';
 import { ProjectStatus, ProjectVisibility, DocumentStatus, ActivityAction } from '@prisma/client';
+import { documentationSeedService } from '../documentation-seeds/seed-service';
+import { BlueprintOption } from '../documentation-seeds/types/seed.types';
 
 export class ProjectService {
   async listProjects(
@@ -49,7 +51,9 @@ export class ProjectService {
     });
 
     return projects.map((p) => {
-      const nonOptionalDocs = p.documents.filter((d) => !d.isOptional);
+      const nonOptionalDocs = p.documents.filter(
+        (d) => !d.isOptional && d.status !== DocumentStatus.ARCHIVED
+      );
       const totalDocs = nonOptionalDocs.length;
       const completedDocs = nonOptionalDocs.filter(
         (d) => d.status === DocumentStatus.COMPLETED || d.status === DocumentStatus.APPROVED
@@ -116,7 +120,9 @@ export class ProjectService {
       throw new NotFoundError('Project not found');
     }
 
-    const nonOptionalDocs = project.documents.filter((d) => !d.isOptional);
+    const nonOptionalDocs = project.documents.filter(
+      (d) => !d.isOptional && d.status !== DocumentStatus.ARCHIVED
+    );
     const totalDocs = nonOptionalDocs.length;
     const completedDocs = nonOptionalDocs.filter(
       (d) => d.status === DocumentStatus.COMPLETED || d.status === DocumentStatus.APPROVED
@@ -175,6 +181,9 @@ export class ProjectService {
       visibility?: ProjectVisibility;
       status?: ProjectStatus;
       initDefaultCategories?: boolean;
+      blueprintOption?: BlueprintOption;
+      selectedCategories?: string[];
+      selectedDocumentIds?: string[];
     }
   ) {
     const baseSlug = slugify(data.slug || data.name) || 'project';
@@ -195,8 +204,11 @@ export class ProjectService {
       count++;
     }
 
-    return await prisma.$transaction(async (tx) => {
-      const project = await tx.project.create({
+    const blueprintOption: BlueprintOption =
+      data.blueprintOption || (data.initDefaultCategories === false ? 'BLANK' : 'FULL');
+
+    const project = await prisma.$transaction(async (tx) => {
+      const p = await tx.project.create({
         data: {
           workspaceId: data.workspaceId,
           name: data.name,
@@ -214,65 +226,33 @@ export class ProjectService {
         }
       });
 
-      // Automatically initialize default categories and template docs if requested
-      if (data.initDefaultCategories !== false) {
-        for (const catDef of DEFAULT_BLUEPRINT_CATEGORIES) {
-          const category = await tx.category.create({
-            data: {
-              projectId: project.id,
-              name: catDef.name,
-              slug: catDef.slug,
-              description: catDef.description,
-              sortOrder: catDef.sortOrder,
-              isCustom: false
-            }
-          });
-
-          for (let i = 0; i < catDef.documents.length; i++) {
-            const docDef = catDef.documents[i];
-            const doc = await tx.document.create({
-              data: {
-                projectId: project.id,
-                categoryId: category.id,
-                title: docDef.title,
-                fileName: docDef.fileName,
-                slug: docDef.slug,
-                description: docDef.description,
-                content: docDef.content,
-                status: DocumentStatus.NOT_STARTED,
-                sortOrder: i + 1,
-                versionNumber: 1,
-                createdById: userId
-              }
-            });
-
-            await tx.documentVersion.create({
-              data: {
-                documentId: doc.id,
-                versionNumber: 1,
-                title: docDef.title,
-                content: docDef.content,
-                changeSummary: 'Created initial template draft',
-                authorId: userId
-              }
-            });
-          }
-        }
-      }
-
       await tx.activityLog.create({
         data: {
           workspaceId: data.workspaceId,
-          projectId: project.id,
+          projectId: p.id,
           userId,
           action: ActivityAction.CREATED,
           entityType: 'PROJECT',
-          metadata: JSON.stringify({ projectName: project.name })
+          metadata: JSON.stringify({ projectName: p.name, blueprintOption })
         }
       });
 
-      return project;
+      return p;
     });
+
+    // Automatically seed enterprise documentation blueprint
+    if (blueprintOption !== 'BLANK') {
+      await documentationSeedService.seedProjectDocumentation(project.id, userId, {
+        projectName: project.name,
+        projectType: project.projectType,
+        techStack: data.techStack,
+        blueprintOption,
+        selectedCategories: data.selectedCategories,
+        selectedDocumentIds: data.selectedDocumentIds
+      });
+    }
+
+    return project;
   }
 
   async updateProject(

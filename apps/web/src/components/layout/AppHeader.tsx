@@ -7,6 +7,7 @@ import { Search, Plus, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useThemeStore } from '../../stores/useThemeStore';
 import { useLayoutStore } from '../../stores/useLayoutStore';
+import { useNavigationStore } from '../../stores/useNavigationStore';
 import { Button } from '../ui/button';
 import { GlobalSearchModal } from '../../features/search/GlobalSearchModal';
 
@@ -19,7 +20,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
   const { user, currentWorkspace, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const { setMobileSidebarOpen } = useLayoutStore();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { isGlobalSearchOpen, setGlobalSearchOpen, setQuickCreateOpen } = useNavigationStore();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   // Global Ctrl+K / Cmd+K listener
@@ -27,12 +28,12 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsSearchOpen(true);
+        setGlobalSearchOpen(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [setGlobalSearchOpen]);
 
   return (
     <>
@@ -75,7 +76,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
         {/* Center: Search Trigger Button */}
         <div className="flex-1 max-w-xs md:max-w-md mx-2 sm:mx-6 min-w-0">
           <button
-            onClick={() => setIsSearchOpen(true)}
+            onClick={() => setGlobalSearchOpen(true)}
             className="w-full flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-background-secondary/80 hover:bg-background-tertiary text-foreground-muted text-xs transition-colors group shadow-xs truncate"
           >
             <div className="flex items-center gap-2 truncate">
@@ -105,9 +106,9 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
             )}
           </button>
 
-          <Link href="/projects?action=new-project">
-            <Button size="sm" variant="primary" className="text-xs gap-1.5 h-8 px-2.5 sm:px-3">
-              <Plus className="h-3.5 w-3.5" />
+          <Link href="/projects?action=new-project" className="shrink-0">
+            <Button size="sm" variant="primary" className="text-xs gap-1.5 h-8 px-2.5 sm:px-3 whitespace-nowrap shadow-xs">
+              <Plus className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">New Project</span>
             </Button>
           </Link>
@@ -155,7 +156,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
       </header>
 
       {/* Global Search Modal */}
-      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <GlobalSearchModal isOpen={isGlobalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
     </>
   );
 }

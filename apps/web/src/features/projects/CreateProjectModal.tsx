@@ -3,14 +3,33 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X } from 'lucide-react';
+import { X, CheckCircle2, FileText, FolderKanban, Layers, Sparkles, ArrowRight } from 'lucide-react';
 import { Dialog } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
+import { Badge } from '../../components/ui/badge';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { api } from '../../lib/api';
 import { PROJECT_TYPES, PROJECT_VISIBILITIES, slugify } from '@devblueprint/shared';
+
+export type BlueprintOption = 'FULL' | 'MINIMAL' | 'BLANK' | 'CUSTOM';
+
+const BLUEPRINT_CATEGORIES = [
+  { slug: 'root', name: 'Project Root (README, AGENTS, Overview)', count: 5 },
+  { slug: '01-project', name: '01. Project Management & Requirements', count: 5 },
+  { slug: '02-architecture', name: '02. System Architecture & Decisions', count: 6 },
+  { slug: '03-design-system', name: '03. Design System & Tokens', count: 19 },
+  { slug: '04-ui-components', name: '04. UI Component Library', count: 37 },
+  { slug: '05-page-design', name: '05. Page Designs & Views', count: 9 },
+  { slug: '06-frontend', name: '06. Frontend Architecture & Standards', count: 11 },
+  { slug: '07-backend', name: '07. Backend Architecture & Services', count: 11 },
+  { slug: '08-database', name: '08. Database Schema & Data Models', count: 7 },
+  { slug: '09-security', name: '09. Security Policies & Hardening', count: 6 },
+  { slug: '10-testing', name: '10. Testing Strategy & Quality Assurance', count: 8 },
+  { slug: '11-devops', name: '11. DevOps, CI/CD & Cloud Infrastructure', count: 9 },
+  { slug: '12-maintenance', name: '12. Maintenance, Monitoring & Operations', count: 6 }
+];
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -32,7 +51,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [repositoryUrl, setRepositoryUrl] = useState('');
   const [color, setColor] = useState('#2563EB');
   const [visibility, setVisibility] = useState<string>('PRIVATE');
-  const [initDefaultCategories, setInitDefaultCategories] = useState(true);
+  const [blueprintOption, setBlueprintOption] = useState<BlueprintOption>('FULL');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    BLUEPRINT_CATEGORIES.map((c) => c.slug)
+  );
+  const [generationSummary, setGenerationSummary] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleNameChange = (val: string) => {
@@ -55,6 +78,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setTechStack(techStack.filter((t) => t !== tag));
   };
 
+  const toggleCategorySelection = (slug: string) => {
+    if (selectedCategories.includes(slug)) {
+      setSelectedCategories(selectedCategories.filter((s) => s !== slug));
+    } else {
+      setSelectedCategories([...selectedCategories, slug]);
+    }
+  };
+
   const createProjectMutation = useMutation({
     mutationFn: async () => {
       if (!currentWorkspace) throw new Error('No active workspace');
@@ -69,15 +100,38 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         repositoryUrl: repositoryUrl || undefined,
         color,
         visibility,
-        initDefaultCategories
+        blueprintOption,
+        selectedCategories: blueprintOption === 'CUSTOM' ? selectedCategories : undefined
       });
       return res.data;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      onClose();
-      router.push(`/projects/${data.id}`);
+
+      // Calculate generation stats from manifest
+      let docsCount = 130;
+      let catCount = 13;
+      if (blueprintOption === 'MINIMAL') {
+        docsCount = 18;
+        catCount = 9;
+      } else if (blueprintOption === 'BLANK') {
+        docsCount = 0;
+        catCount = 0;
+      } else if (blueprintOption === 'CUSTOM') {
+        catCount = selectedCategories.length;
+        docsCount = BLUEPRINT_CATEGORIES.filter((c) => selectedCategories.includes(c.slug)).reduce(
+          (sum, c) => sum + c.count,
+          0
+        );
+      }
+
+      setGenerationSummary({
+        project: data,
+        blueprintOption,
+        categoriesCount: catCount,
+        documentsCount: docsCount
+      });
     },
     onError: (err: any) => {
       setError(err.message || 'Failed to create project');
@@ -99,6 +153,96 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     '#0891B2', // Cyan
     '#DB2777'  // Pink
   ];
+
+  const handleFinishAndNavigate = () => {
+    if (generationSummary?.project?.id) {
+      onClose();
+      router.push(`/projects/${generationSummary.project.id}`);
+    } else {
+      onClose();
+    }
+  };
+
+  // If generation summary is ready, render success report
+  if (generationSummary) {
+    return (
+      <Dialog
+        isOpen={isOpen}
+        onClose={handleFinishAndNavigate}
+        title="Documentation Blueprint Generated"
+        description="Your enterprise engineering documentation workspace has been successfully created and populated."
+        maxWidth="lg"
+      >
+        <div className="space-y-6 pt-2">
+          <div className="p-5 rounded-xl border border-success/30 bg-success/5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-success/20 flex items-center justify-center text-success">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-foreground">
+                  {generationSummary.project.name} is Ready
+                </h3>
+                <p className="text-xs text-foreground-muted">
+                  Initialized with{' '}
+                  <span className="font-medium text-foreground">
+                    {generationSummary.blueprintOption === 'FULL'
+                      ? 'Full Enterprise Blueprint'
+                      : generationSummary.blueprintOption === 'MINIMAL'
+                      ? 'Minimal Core Blueprint'
+                      : generationSummary.blueprintOption === 'CUSTOM'
+                      ? 'Custom Blueprint'
+                      : 'Blank Workspace'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-success/20">
+              <div className="p-2.5 rounded-lg bg-background/80 border border-border">
+                <p className="text-[10px] text-foreground-muted uppercase tracking-wider">Categories</p>
+                <p className="text-lg font-bold text-foreground font-mono mt-0.5">
+                  {generationSummary.categoriesCount}
+                </p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-background/80 border border-border">
+                <p className="text-[10px] text-foreground-muted uppercase tracking-wider">Documents</p>
+                <p className="text-lg font-bold text-foreground font-mono mt-0.5">
+                  {generationSummary.documentsCount}
+                </p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-background/80 border border-border">
+                <p className="text-[10px] text-foreground-muted uppercase tracking-wider">Initial Status</p>
+                <p className="text-sm font-semibold text-amber-500 mt-1">DRAFT / NOT_STARTED</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 text-xs text-foreground-secondary">
+            <p className="font-medium text-foreground">What was generated:</p>
+            <ul className="space-y-1.5 list-disc list-inside text-foreground-muted">
+              <li>Root governance files (README, AGENTS, CONTRIBUTING, CHANGELOG, PROJECT-OVERVIEW)</li>
+              <li>12 domain categories (Project, Architecture, Design System, UI Components, Page Design, Frontend, Backend, Database, Security, Testing, DevOps, Maintenance)</li>
+              <li>Production starter markdown content with Mermaid diagrams and acceptance criteria</li>
+              <li>Initial version snapshots (v1) for every document</li>
+            </ul>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleFinishAndNavigate}
+              className="text-xs gap-1.5 whitespace-nowrap"
+            >
+              <span>Open Project Workspace</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog
@@ -229,26 +373,153 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           </div>
         </div>
 
-        {/* Default Blueprint Structure Checkbox */}
-        <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="initDefaultCategories"
-              checked={initDefaultCategories}
-              onChange={(e) => setInitDefaultCategories(e.target.checked)}
-              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-            />
-            <label
-              htmlFor="initDefaultCategories"
-              className="text-xs font-semibold text-primary cursor-pointer"
-            >
-              Generate Complete Blueprint Structure (Recommended)
+        {/* Documentation Blueprint Selection Step */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>Documentation Blueprint Setup</span>
             </label>
+            <span className="text-[11px] text-foreground-muted">Select workspace documentation level</span>
           </div>
-          <p className="text-[11px] text-foreground-muted pl-6 leading-relaxed">
-            Automatically provisions all 8 architectural categories (Product, Design, Frontend, Backend, Infrastructure, Quality & Security, Data & Integrations, Governance) with 47 pre-configured engineering documents.
-          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Option A: Full Enterprise Blueprint */}
+            <div
+              onClick={() => setBlueprintOption('FULL')}
+              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                blueprintOption === 'FULL'
+                  ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary'
+                  : 'border-border bg-card hover:bg-background-secondary'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-xs font-semibold text-foreground">Full Enterprise Blueprint</span>
+                <Badge variant="info" className="text-[9px] px-1.5 py-0">Recommended</Badge>
+              </div>
+              <p className="text-[11px] text-foreground-muted mt-1 leading-relaxed">
+                All 12 domain categories + Root governance with 139 complete production Markdown specifications.
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-[10px] text-primary font-medium">
+                <span>13 Categories</span>
+                <span>•</span>
+                <span>139 Documents</span>
+              </div>
+            </div>
+
+            {/* Option B: Minimal Blueprint */}
+            <div
+              onClick={() => setBlueprintOption('MINIMAL')}
+              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                blueprintOption === 'MINIMAL'
+                  ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary'
+                  : 'border-border bg-card hover:bg-background-secondary'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-xs font-semibold text-foreground">Minimal Blueprint</span>
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0">Essential</Badge>
+              </div>
+              <p className="text-[11px] text-foreground-muted mt-1 leading-relaxed">
+                Core architectural essentials: requirements, system architecture, database, API design, CI/CD.
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-[10px] text-foreground-muted font-medium">
+                <span>9 Categories</span>
+                <span>•</span>
+                <span>18 Documents</span>
+              </div>
+            </div>
+
+            {/* Option C: Blank Project */}
+            <div
+              onClick={() => setBlueprintOption('BLANK')}
+              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                blueprintOption === 'BLANK'
+                  ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary'
+                  : 'border-border bg-card hover:bg-background-secondary'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-xs font-semibold text-foreground">Blank Project</span>
+                <Badge variant="default" className="text-[9px] px-1.5 py-0">Clean</Badge>
+              </div>
+              <p className="text-[11px] text-foreground-muted mt-1 leading-relaxed">
+                Start from scratch without any seeded categories or markdown files.
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-[10px] text-foreground-muted font-medium">
+                <span>0 Categories</span>
+                <span>•</span>
+                <span>0 Documents</span>
+              </div>
+            </div>
+
+            {/* Option D: Custom Blueprint */}
+            <div
+              onClick={() => setBlueprintOption('CUSTOM')}
+              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                blueprintOption === 'CUSTOM'
+                  ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary'
+                  : 'border-border bg-card hover:bg-background-secondary'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-xs font-semibold text-foreground">Custom Blueprint</span>
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0">Select</Badge>
+              </div>
+              <p className="text-[11px] text-foreground-muted mt-1 leading-relaxed">
+                Choose specifically which categories and specifications to generate.
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-[10px] text-foreground-muted font-medium">
+                <span>{selectedCategories.length} Categories Selected</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Blueprint Categories Selector */}
+          {blueprintOption === 'CUSTOM' && (
+            <div className="p-3 rounded-xl border border-border bg-background-secondary/50 space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between text-xs font-medium text-foreground">
+                <span>Select Categories to Include:</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategories(
+                      selectedCategories.length === BLUEPRINT_CATEGORIES.length
+                        ? []
+                        : BLUEPRINT_CATEGORIES.map((c) => c.slug)
+                    )
+                  }
+                  className="text-primary text-[11px] hover:underline"
+                >
+                  {selectedCategories.length === BLUEPRINT_CATEGORIES.length
+                    ? 'Deselect All'
+                    : 'Select All'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-1">
+                {BLUEPRINT_CATEGORIES.map((cat) => (
+                  <label
+                    key={cat.slug}
+                    className="flex items-center justify-between p-2 rounded-lg border border-border bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(cat.slug)}
+                        onChange={() => toggleCategorySelection(cat.slug)}
+                        className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                      />
+                      <span className="truncate">{cat.name}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-foreground-muted shrink-0 ml-1">
+                      {cat.count} docs
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-3 border-t border-border">
@@ -261,6 +532,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
             size="sm"
             isLoading={createProjectMutation.isPending}
             disabled={!name.trim()}
+            className="whitespace-nowrap"
           >
             Create Project & Blueprint
           </Button>

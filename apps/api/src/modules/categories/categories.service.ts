@@ -33,7 +33,9 @@ export class CategoryService {
 
     const categoryMap = new Map<string, any>();
     categories.forEach((cat) => {
-      const nonOptional = cat.documents.filter((d) => !d.isOptional);
+      const nonOptional = cat.documents.filter(
+        (d) => !d.isOptional && d.status !== DocumentStatus.ARCHIVED
+      );
       const totalDocs = nonOptional.length;
       const completedDocs = nonOptional.filter(
         (d) => d.status === DocumentStatus.COMPLETED || d.status === DocumentStatus.APPROVED

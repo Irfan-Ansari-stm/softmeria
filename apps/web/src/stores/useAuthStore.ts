@@ -29,6 +29,7 @@ interface AuthState {
   token: string | null;
 
   setAuth: (user: User, token: string, workspaces: WorkspaceItem[]) => void;
+  setUser: (user: User) => void;
   setCurrentWorkspace: (workspace: WorkspaceItem) => void;
   initAuth: () => Promise<void>;
   logout: () => Promise<void>;
@@ -58,6 +59,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
       isLoading: false
     });
+  },
+
+  setUser: (user) => {
+    set({ user });
   },
 
   setCurrentWorkspace: (workspace) => {

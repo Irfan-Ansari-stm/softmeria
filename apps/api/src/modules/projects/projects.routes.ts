@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { projectController } from './projects.controller';
+import { workspaceController } from '../workspaces/workspaces.controller';
 import { authenticate } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { createProjectSchema, updateProjectSchema } from './projects.validator';
@@ -15,6 +16,17 @@ router.post('/', validate(createProjectSchema), (req, res, next) =>
 
 router.get('/:projectId', (req, res, next) =>
   projectController.getProject(req, res, next)
+);
+
+// Project Members
+router.get('/:projectId/members', (req, res, next) =>
+  workspaceController.listProjectMembers(req, res, next)
+);
+router.post('/:projectId/members', (req, res, next) =>
+  workspaceController.assignProjectMember(req, res, next)
+);
+router.delete('/:projectId/members/:userId', (req, res, next) =>
+  workspaceController.removeProjectMember(req, res, next)
 );
 
 router.put('/:projectId', validate(updateProjectSchema), (req, res, next) =>

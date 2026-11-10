@@ -81,10 +81,26 @@ class ApiClient {
     });
   }
 
+  upload<T>(endpoint: string, formData: FormData, options?: RequestInit) {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: formData
+    });
+  }
+
   put<T>(endpoint: string, body?: any, options?: RequestInit) {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
+      body: body instanceof FormData ? body : JSON.stringify(body)
+    });
+  }
+
+  patch<T>(endpoint: string, body?: any, options?: RequestInit) {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
       body: body instanceof FormData ? body : JSON.stringify(body)
     });
   }

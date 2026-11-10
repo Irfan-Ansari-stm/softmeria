@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-interface ResizeHandleProps {
+export interface ResizeHandleProps {
   onResize: (deltaX: number) => void;
   onReset?: () => void;
   onStepChange?: (delta: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   orientation?: 'horizontal'; // for column resizing
   side?: 'left' | 'right';
   className?: string;
@@ -21,6 +23,8 @@ export function ResizeHandle({
   onResize,
   onReset,
   onStepChange,
+  onDragStart,
+  onDragEnd,
   orientation = 'horizontal',
   side = 'right',
   className,
@@ -30,79 +34,156 @@ export function ResizeHandle({
   current
 }: ResizeHandleProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
+  const lastXRef = useRef(0);
+  const pendingDeltaXRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
 
-  const startDrag = useCallback(
-    (clientX: number) => {
-      setIsDragging(true);
-      document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'col-resize';
+  // Keep callback refs fresh
+  const onResizeRef = useRef(onResize);
+  onResizeRef.current = onResize;
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
+  const onResetRef = useRef(onReset);
+  onResetRef.current = onReset;
+  const onStepChangeRef = useRef(onStepChange);
+  onStepChangeRef.current = onStepChange;
 
-      let lastX = clientX;
-
-      const handleMove = (currentX: number) => {
-        const deltaX = currentX - lastX;
-        lastX = currentX;
-        onResize(deltaX);
-      };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        handleMove(e.clientX);
-      };
-
-      const handleTouchMove = (e: TouchEvent) => {
-        if (e.touches.length > 0) {
-          handleMove(e.touches[0].clientX);
-        }
-      };
-
-      const stopDrag = () => {
-        setIsDragging(false);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      if (isDraggingRef.current) {
         document.body.style.userSelect = '';
         document.body.style.cursor = '';
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', stopDrag);
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('touchend', stopDrag);
-        window.removeEventListener('touchcancel', stopDrag);
-      };
+      }
+    };
+  }, []);
 
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', stopDrag);
-      window.addEventListener('touchmove', handleTouchMove, { passive: true });
-      window.addEventListener('touchend', stopDrag);
-      window.addEventListener('touchcancel', stopDrag);
-    },
-    [onResize]
-  );
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only primary mouse button or touch
+    if (e.button !== 0) return;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    startDrag(e.clientX);
+    e.stopPropagation();
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Fallback if pointer capture is unsupported
+    }
+
+    lastXRef.current = e.clientX;
+    pendingDeltaXRef.current = 0;
+    isDraggingRef.current = true;
+    setIsDragging(true);
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+
+    onDragStartRef.current?.();
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) {
-      startDrag(e.touches[0].clientX);
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+
+    const currentX = e.clientX;
+    const deltaX = currentX - lastXRef.current;
+    lastXRef.current = currentX;
+
+    pendingDeltaXRef.current += deltaX;
+
+    // Use requestAnimationFrame to avoid firing multiple layout recalculations in a single frame
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        if (pendingDeltaXRef.current !== 0) {
+          onResizeRef.current(pendingDeltaXRef.current);
+          pendingDeltaXRef.current = 0;
+        }
+        rafIdRef.current = null;
+      });
     }
   };
 
-  const handleDoubleClick = () => {
-    if (onReset) onReset();
+  const finishDrag = (pointerId?: number, currentTarget?: HTMLDivElement) => {
+    if (!isDraggingRef.current) return;
+
+    if (currentTarget && pointerId !== undefined) {
+      try {
+        if (currentTarget.hasPointerCapture(pointerId)) {
+          currentTarget.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    // Flush any remaining delta
+    if (pendingDeltaXRef.current !== 0) {
+      onResizeRef.current(pendingDeltaXRef.current);
+      pendingDeltaXRef.current = 0;
+    }
+
+    isDraggingRef.current = false;
+    setIsDragging(false);
+
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+
+    onDragEndRef.current?.();
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    finishDrag(e.pointerId, e.currentTarget);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    finishDrag(e.pointerId, e.currentTarget);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onResetRef.current?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const step = e.shiftKey ? 30 : 10;
+
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (onStepChange) onStepChange(-step);
-      else onResize(-step);
+      if (onStepChangeRef.current) onStepChangeRef.current(-step);
+      else onResizeRef.current(-step);
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      if (onStepChange) onStepChange(step);
-      else onResize(step);
-    } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'r') {
+      if (onStepChangeRef.current) onStepChangeRef.current(step);
+      else onResizeRef.current(step);
+    } else if (e.key === 'Home') {
       e.preventDefault();
-      if (onReset) onReset();
+      if (min !== undefined && current !== undefined) {
+        const delta = min - current;
+        if (onStepChangeRef.current) onStepChangeRef.current(delta);
+        else onResizeRef.current(delta);
+      }
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      if (max !== undefined && current !== undefined) {
+        const delta = max - current;
+        if (onStepChangeRef.current) onStepChangeRef.current(delta);
+        else onResizeRef.current(delta);
+      }
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      onResetRef.current?.();
     }
   };
 
@@ -115,43 +196,44 @@ export function ResizeHandle({
       aria-valuenow={current}
       aria-valuemin={min}
       aria-valuemax={max}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       title={`${ariaLabel} (Drag to resize, double-click to reset)`}
       className={twMerge(
         clsx(
-          'relative z-20 flex items-center justify-center cursor-col-resize select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-          'w-2 -mx-1 hover:w-2 transition-colors group',
-          isDragging && 'w-2 bg-primary/20',
+          // Interaction area: 10px width (-mx-1 for snug placement between panels)
+          'relative z-30 flex items-center justify-center cursor-col-resize select-none touch-none',
+          'w-2.5 -mx-1 shrink-0 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:z-40',
           className
         )
       )}
     >
-      {/* Invisible expanded hit target area */}
+      {/* Invisible expanded hit target area (12px hit zone) */}
       <div className="absolute inset-y-0 -left-1 -right-1 z-10" />
 
-      {/* Visual Indicator Line & Pill */}
+      {/* Visible subtle divider line */}
       <div
         className={clsx(
-          'w-0.5 h-full transition-colors duration-150',
+          'w-[1.5px] h-full transition-colors duration-150',
           isDragging
             ? 'bg-primary'
-            : 'bg-transparent group-hover:bg-primary/60 group-focus-visible:bg-primary'
+            : 'bg-border group-hover:bg-primary/70 group-focus-visible:bg-primary'
         )}
       />
 
-      {/* Center grab pill dots */}
+      {/* Visual grab pill / affordance in center */}
       <div
         className={clsx(
-          'absolute top-1/2 -translate-y-1/2 w-1 h-6 rounded-full transition-opacity duration-150 flex items-center justify-center',
+          'absolute top-1/2 -translate-y-1/2 w-1 h-7 rounded-full transition-all duration-150 pointer-events-none flex items-center justify-center',
           isDragging
-            ? 'opacity-100 bg-primary'
-            : 'opacity-0 group-hover:opacity-100 bg-primary/50'
+            ? 'opacity-100 bg-primary scale-110 shadow-sm'
+            : 'opacity-0 group-hover:opacity-100 bg-primary/60'
         )}
       />
     </div>
   );
 }
-

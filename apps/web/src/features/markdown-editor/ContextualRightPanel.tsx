@@ -16,7 +16,11 @@ import {
   PanelRightClose
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/useEditorStore';
-import { useLayoutStore } from '../../stores/useLayoutStore';
+import {
+  useLayoutStore,
+  MIN_INSPECTOR_WIDTH,
+  MAX_INSPECTOR_WIDTH
+} from '../../stores/useLayoutStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/button';
@@ -49,7 +53,10 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
     isInspectorCollapsed,
     toggleInspectorCollapsed,
     isMobileInspectorOpen,
-    setMobileInspectorOpen
+    setMobileInspectorOpen,
+    isResizing,
+    setIsResizing,
+    commitLayout
   } = useLayoutStore();
 
   const [commentInput, setCommentInput] = useState('');
@@ -163,7 +170,11 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
 
   const handleResize = (deltaX: number) => {
     // Left boundary resize: moving mouse left increases width
-    setInspectorWidth(inspectorWidth - deltaX);
+    setInspectorWidth(inspectorWidth - deltaX, false);
+  };
+
+  const handleStepResize = (delta: number) => {
+    setInspectorWidth(inspectorWidth - delta, true);
   };
 
   const panelContent = (
@@ -595,8 +606,14 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
           <ResizeHandle
             onResize={handleResize}
             onReset={resetInspectorWidth}
-            min={280}
-            max={440}
+            onStepChange={handleStepResize}
+            onDragStart={() => setIsResizing(true)}
+            onDragEnd={() => {
+              setIsResizing(false);
+              commitLayout();
+            }}
+            min={MIN_INSPECTOR_WIDTH}
+            max={MAX_INSPECTOR_WIDTH}
             current={inspectorWidth}
             ariaLabel="Resize Inspector Panel"
             side="left"
@@ -604,7 +621,9 @@ export function ContextualRightPanel({ documentId }: ContextualRightPanelProps) 
           />
           <aside
             style={{ width: `${inspectorWidth}px` }}
-            className="border-l border-border bg-background hidden md:flex flex-col h-full text-xs select-none shrink-0 overflow-hidden transition-[width] duration-75 relative min-w-0"
+            className={`border-l border-border bg-background hidden md:flex flex-col h-full text-xs select-none shrink-0 overflow-hidden relative min-w-0 ${
+              !isResizing ? 'transition-[width] duration-200 ease-out' : ''
+            }`}
           >
             {panelContent}
           </aside>

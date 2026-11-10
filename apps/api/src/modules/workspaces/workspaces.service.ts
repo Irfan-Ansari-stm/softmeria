@@ -137,6 +137,18 @@ export class WorkspaceService {
       themePreference?: string;
       notifyOnComment?: boolean;
       notifyOnReview?: boolean;
+      companyName?: string;
+      website?: string;
+      industry?: string;
+      timezone?: string;
+      defaultVisibility?: string;
+      emailNotifications?: boolean;
+      inAppNotifications?: boolean;
+      projectUpdates?: boolean;
+      taskAssignments?: boolean;
+      bugAlerts?: boolean;
+      releaseApprovals?: boolean;
+      securityAlerts?: boolean;
     }
   ) {
     const updated = await prisma.workspace.update({
@@ -149,12 +161,36 @@ export class WorkspaceService {
             create: {
               themePreference: data.themePreference || 'light',
               notifyOnComment: data.notifyOnComment ?? true,
-              notifyOnReview: data.notifyOnReview ?? true
+              notifyOnReview: data.notifyOnReview ?? true,
+              companyName: data.companyName,
+              website: data.website,
+              industry: data.industry,
+              timezone: data.timezone || 'UTC',
+              defaultVisibility: data.defaultVisibility || 'INTERNAL',
+              emailNotifications: data.emailNotifications ?? true,
+              inAppNotifications: data.inAppNotifications ?? true,
+              projectUpdates: data.projectUpdates ?? true,
+              taskAssignments: data.taskAssignments ?? true,
+              bugAlerts: data.bugAlerts ?? true,
+              releaseApprovals: data.releaseApprovals ?? true,
+              securityAlerts: data.securityAlerts ?? true
             },
             update: {
               ...(data.themePreference ? { themePreference: data.themePreference } : {}),
               ...(data.notifyOnComment !== undefined ? { notifyOnComment: data.notifyOnComment } : {}),
-              ...(data.notifyOnReview !== undefined ? { notifyOnReview: data.notifyOnReview } : {})
+              ...(data.notifyOnReview !== undefined ? { notifyOnReview: data.notifyOnReview } : {}),
+              ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
+              ...(data.website !== undefined ? { website: data.website } : {}),
+              ...(data.industry !== undefined ? { industry: data.industry } : {}),
+              ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
+              ...(data.defaultVisibility !== undefined ? { defaultVisibility: data.defaultVisibility } : {}),
+              ...(data.emailNotifications !== undefined ? { emailNotifications: data.emailNotifications } : {}),
+              ...(data.inAppNotifications !== undefined ? { inAppNotifications: data.inAppNotifications } : {}),
+              ...(data.projectUpdates !== undefined ? { projectUpdates: data.projectUpdates } : {}),
+              ...(data.taskAssignments !== undefined ? { taskAssignments: data.taskAssignments } : {}),
+              ...(data.bugAlerts !== undefined ? { bugAlerts: data.bugAlerts } : {}),
+              ...(data.releaseApprovals !== undefined ? { releaseApprovals: data.releaseApprovals } : {}),
+              ...(data.securityAlerts !== undefined ? { securityAlerts: data.securityAlerts } : {})
             }
           }
         }
@@ -203,67 +239,267 @@ export class WorkspaceService {
       orderBy: { joinedAt: 'asc' }
     });
 
-    return members.map((m) => ({
-      id: m.id,
-      userId: m.user.id,
-      name: m.user.name,
-      email: m.user.email,
-      avatarUrl: m.user.avatarUrl,
-      role: m.role,
-      joinedAt: m.joinedAt.toISOString()
-    }));
+    // Gather project and task assignments counts
+    const memberStats = await Promise.all(
+      members.map(async (m) => {
+        const assignedProjects = await prisma.projectMember.count({
+          where: { userId: m.userId, project: { workspaceId } }
+        });
+        const assignedTasks = await prisma.task.count({
+          where: { assigneeId: m.userId, project: { workspaceId } }
+        });
+
+        return {
+          id: m.id,
+          workspaceId: m.workspaceId,
+          userId: m.user.id,
+          name: m.user.name,
+          email: m.user.email,
+          avatarUrl: m.user.avatarUrl,
+          role: m.role,
+          status: m.status || 'ACTIVE',
+          title: m.title || null,
+          department: m.department || null,
+          joinedAt: m.joinedAt.toISOString(),
+          assignedProjectCount: assignedProjects,
+          assignedTaskCount: assignedTasks
+        };
+      })
+    );
+
+    return memberStats;
   }
 
-  async inviteMember(workspaceId: string, email: string, role: UserRole) {
-    let user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
+  async updateMemberStatus(workspaceId: string, memberId: string, status: string, currentUserId: string) {
+    const member = await prisma.workspaceMember.findUnique({
+      where: { id: memberId },
+      include: { workspace: true }
     });
-
-    if (!user) {
-      throw new NotFoundError(
-        'User not found. Please ask them to create an account first or provide an existing user email.'
-      );
+    if (!member || member.workspaceId !== workspaceId) {
+      throw new NotFoundError('Member not found in this workspace');
+    }
+    if (member.role === UserRole.OWNER && status === 'SUSPENDED') {
+      throw new BadRequestError('Cannot suspend the workspace owner');
     }
 
-    const existingMember = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId,
-          userId: user.id
-        }
+    return prisma.workspaceMember.update({
+      where: { id: memberId },
+      data: { status }
+    });
+  }
+
+  async inviteMember(workspaceId: string, invitedById: string, email: string, role: UserRole) {
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check if email already a member
+    const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (existingUser) {
+      const existingMember = await prisma.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId: existingUser.id } }
+      });
+      if (existingMember) {
+        throw new ConflictError('User is already a member of this workspace');
       }
-    });
-
-    if (existingMember) {
-      throw new ConflictError('User is already a member of this workspace');
     }
 
-    const member = await prisma.workspaceMember.create({
-      data: {
+    // Check existing pending invitation
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const invitation = await prisma.workspaceInvitation.upsert({
+      where: { workspaceId_email: { workspaceId, email: cleanEmail } },
+      create: {
         workspaceId,
-        userId: user.id,
-        role
+        email: cleanEmail,
+        role: role || UserRole.EDITOR,
+        invitedById,
+        token,
+        status: 'PENDING',
+        expiresAt
+      },
+      update: {
+        role: role || UserRole.EDITOR,
+        invitedById,
+        token,
+        status: 'PENDING',
+        expiresAt
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatarUrl: true
-          }
-        }
+        invitedBy: { select: { id: true, name: true, avatarUrl: true } }
       }
+    });
+
+    // If user exists in system, send notification
+    if (existingUser) {
+      const ws = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { name: true } });
+      await prisma.notification.create({
+        data: {
+          userId: existingUser.id,
+          title: 'Workspace Invitation',
+          message: `You have been invited to join "${ws?.name}" as ${invitation.role}.`,
+          type: 'info',
+          link: `/team?invitation=${invitation.token}`
+        }
+      });
+    }
+
+    return invitation;
+  }
+
+  async listInvitations(workspaceId: string) {
+    return prisma.workspaceInvitation.findMany({
+      where: { workspaceId },
+      include: {
+        invitedBy: { select: { id: true, name: true, avatarUrl: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async cancelInvitation(workspaceId: string, invitationId: string) {
+    const inv = await prisma.workspaceInvitation.findUnique({ where: { id: invitationId } });
+    if (!inv || inv.workspaceId !== workspaceId) throw new NotFoundError('Invitation not found');
+
+    return prisma.workspaceInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'CANCELLED' }
+    });
+  }
+
+  async resendInvitation(workspaceId: string, invitationId: string) {
+    const inv = await prisma.workspaceInvitation.findUnique({ where: { id: invitationId } });
+    if (!inv || inv.workspaceId !== workspaceId) throw new NotFoundError('Invitation not found');
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    return prisma.workspaceInvitation.update({
+      where: { id: invitationId },
+      data: {
+        status: 'PENDING',
+        expiresAt
+      },
+      include: { invitedBy: { select: { id: true, name: true } } }
+    });
+  }
+
+  async acceptInvitation(token: string, userId: string) {
+    const inv = await prisma.workspaceInvitation.findUnique({ where: { token } });
+    if (!inv) throw new NotFoundError('Invalid invitation token');
+    if (inv.status !== 'PENDING') throw new BadRequestError(`Invitation is already ${inv.status.toLowerCase()}`);
+    if (inv.expiresAt < new Date()) {
+      await prisma.workspaceInvitation.update({ where: { id: inv.id }, data: { status: 'EXPIRED' } });
+      throw new BadRequestError('Invitation has expired');
+    }
+
+    // Create or reactivate member
+    const member = await prisma.workspaceMember.upsert({
+      where: { workspaceId_userId: { workspaceId: inv.workspaceId, userId } },
+      create: {
+        workspaceId: inv.workspaceId,
+        userId,
+        role: inv.role,
+        status: 'ACTIVE'
+      },
+      update: {
+        role: inv.role,
+        status: 'ACTIVE'
+      }
+    });
+
+    await prisma.workspaceInvitation.update({
+      where: { id: inv.id },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() }
+    });
+
+    return member;
+  }
+
+  // -------------------------------------------------------------------------
+  // PROJECT MEMBERS
+  // -------------------------------------------------------------------------
+  async listProjectMembers(projectId: string) {
+    return prisma.projectMember.findMany({
+      where: { projectId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatarUrl: true } }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+
+  async assignProjectMember(projectId: string, userId: string, role?: UserRole) {
+    return prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      create: {
+        projectId,
+        userId,
+        role: role || UserRole.EDITOR
+      },
+      update: {
+        role: role || UserRole.EDITOR
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatarUrl: true } }
+      }
+    });
+  }
+
+  async removeProjectMember(projectId: string, userId: string) {
+    return prisma.projectMember.delete({
+      where: { projectId_userId: { projectId, userId } }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // TEAM DASHBOARD STATS
+  // -------------------------------------------------------------------------
+  async getTeamStats(workspaceId: string) {
+    const members = await prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      include: { user: true }
+    });
+
+    const invitations = await prisma.workspaceInvitation.findMany({
+      where: { workspaceId, status: 'PENDING' }
+    });
+
+    const activeMembers = members.filter((m) => m.status !== 'SUSPENDED').length;
+    const suspendedMembers = members.filter((m) => m.status === 'SUSPENDED').length;
+
+    const roleDistribution = {
+      owners: members.filter((m) => m.role === UserRole.OWNER).length,
+      admins: members.filter((m) => m.role === UserRole.ADMIN).length,
+      editors: members.filter((m) => m.role === UserRole.EDITOR).length,
+      viewers: members.filter((m) => m.role === UserRole.VIEWER).length
+    };
+
+    const recentActivities = await prisma.activityLog.findMany({
+      where: { workspaceId },
+      include: {
+        user: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 8
     });
 
     return {
-      id: member.id,
-      userId: member.user.id,
-      name: member.user.name,
-      email: member.user.email,
-      avatarUrl: member.user.avatarUrl,
-      role: member.role,
-      joinedAt: member.joinedAt.toISOString()
+      totalMembers: members.length,
+      activeMembers,
+      pendingInvitations: invitations.length,
+      suspendedMembers,
+      roleDistribution,
+      recentActivities: recentActivities.map((a) => ({
+        id: a.id,
+        workspaceId: a.workspaceId,
+        projectId: a.projectId,
+        projectName: a.project?.name,
+        userId: a.userId,
+        userName: a.user.name,
+        action: a.action,
+        entityType: a.entityType,
+        createdAt: a.createdAt.toISOString()
+      }))
     };
   }
 

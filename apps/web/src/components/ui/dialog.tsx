@@ -10,6 +10,7 @@ export interface DialogProps {
   description?: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
 }
 
 export function Dialog({
@@ -18,7 +19,8 @@ export function Dialog({
   title,
   description,
   children,
-  maxWidth = 'md'
+  maxWidth = 'md',
+  size
 }: DialogProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -45,6 +47,8 @@ export function Dialog({
     '3xl': 'max-w-3xl'
   };
 
+  const resolvedSize = (size || maxWidth || 'md') as keyof typeof maxWidthClasses;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -58,7 +62,7 @@ export function Dialog({
         className={twMerge(
           clsx(
             'relative w-full rounded-xl border border-border bg-card text-card-foreground shadow-2xl p-6 z-10 transition-all max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95',
-            maxWidthClasses[maxWidth]
+            maxWidthClasses[resolvedSize]
           )
         )}
       >

@@ -18,7 +18,13 @@ export const loginSchema = z.object({
 export const updateProfileSchema = z.object({
   body: z.object({
     name: z.string().min(2).optional(),
-    avatarUrl: z.string().url().nullable().optional()
+    avatarUrl: z.string().url().nullable().optional(),
+    jobTitle: z.string().optional(),
+    department: z.string().optional(),
+    bio: z.string().optional(),
+    timezone: z.string().optional(),
+    preferredLanguage: z.string().optional(),
+    twoFactorEnabled: z.boolean().optional()
   })
 });
 

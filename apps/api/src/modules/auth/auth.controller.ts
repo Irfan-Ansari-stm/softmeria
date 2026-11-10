@@ -100,6 +100,24 @@ export class AuthController {
       return next(error);
     }
   }
+
+  async listSessions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const sessions = await authService.listSessions(req.user!.id);
+      return sendSuccess(res, sessions, 'Active sessions retrieved');
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async revokeSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      await authService.revokeSession(req.user!.id, req.params.sessionId);
+      return sendSuccess(res, null, 'Session revoked successfully');
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();
